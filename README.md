@@ -622,20 +622,6 @@ Para contribuir al proyecto:
 4. Push a la rama: `git push origin feature/nueva-funcionalidad`
 5. Crea un Pull Request
 
----
-
-## 📄 Licencia
-
-Este proyecto es de código abierto bajo licencia MIT.
-
----
-
-## 📞 Soporte
-
-Para preguntas o soporte:
-- 📧 Email: tu-email@empresa.com
-- 💬 Slack: #churn-prediction
-- 📚 Docs: https://docs.tu-empresa.com/churn
 
 ---
 
