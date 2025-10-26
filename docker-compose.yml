@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  churn-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: churn-prediction-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # Montar modelos entrenados (si existen localmente)
+      - ./churn_model:/app/churn_model
+      - ./trained_model:/app/trained_model
+      # Montar dataset
+      - ./Churn_Modelling.csv:/app/Churn_Modelling.csv
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - churn-network
+
+networks:
+  churn-network:
+    driver: bridge
