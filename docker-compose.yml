@@ -24,7 +24,10 @@ services:
     volumes:
       # Modelos entrenados (persistencia)
       - ./churn_model:/app/churn_model
-      - ./trained_model:/app/trained_model
+
+      # Comentado temporalmente para permitir descarga fresh de Llama 3.2
+      # Una vez descargado, descomenta esta línea para persistencia
+      # - ./trained_model:/app/trained_model
 
       # Dataset (solo lectura)
       - ./Churn_Modelling.csv:/app/Churn_Modelling.csv:ro
