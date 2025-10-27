@@ -292,19 +292,28 @@ class ChurnChatSystem:
         }
         
         # Detectar intenciones (pueden ser múltiples)
+        # Keywords para solicitar análisis de clientes en riesgo
         if any(word in query_lower for word in ["cuántos", "cantidad", "lista", "clientes en riesgo", "top", "dame", "muestra", "quiero ver", "fuga", "mayor riesgo", "más riesgo", "con riesgo", "riesgo de"]):
             intent["type"] = "analysis"
             intent["requires_analysis"] = True
 
-        if any(word in query_lower for word in ["tasa", "porcentaje", "estadística", "métrica", "promedio"]):
+        # Keywords para solicitar estadísticas y situación general
+        if any(word in query_lower for word in ["tasa", "porcentaje", "estadística", "métrica", "promedio", "situación", "estado", "cómo está", "cuál es la", "impacto", "análisis general"]):
             intent["requires_statistics"] = True
 
+        # Keywords para predicciones específicas
         if any(word in query_lower for word in ["predice", "predicción", "probabilidad"]):
             intent["requires_prediction"] = True
 
+        # Keywords para filtrar por clientes de alto valor
         if any(word in query_lower for word in ["alto valor", "premium", "balance alto", "mayor"]):
             intent["high_value"] = True
-        
+
+        # Si pregunta qué hacer o cómo reducir, obtener todo el contexto
+        if any(word in query_lower for word in ["qué hacer", "cómo reducir", "estrategia", "recomendación", "recomiendas", "sugieres", "plan"]):
+            intent["requires_statistics"] = True
+            intent["requires_analysis"] = True
+
         return intent
     
     def get_statistics(self, high_value_only: bool = False) -> Dict[str, Any]:
