@@ -1,6 +1,44 @@
 # 🎯 Sistema de Predicción de Churn con Chat IA
 Sistema completo de predicción de fuga de clientes usando IA, con interfaz conversacional en lenguaje natural.
 
+---
+
+## 🚀 INICIO RÁPIDO CON DOCKER (Recomendado)
+
+**¿Solo tienes Docker instalado? ¡Perfecto!**
+
+### **Opción 1: Quick Start (5 minutos)**
+👉 **[README_QUICK_START.md](README_QUICK_START.md)** - Instrucciones mínimas para empezar YA
+
+### **Opción 2: Instalación Completa**
+👉 **[INSTALACION_DOCKER.md](INSTALACION_DOCKER.md)** - Guía paso a paso detallada con Docker
+
+**Requisitos:**
+- ✅ Docker Desktop instalado y corriendo
+- ✅ 8GB RAM disponible
+- ✅ 5GB espacio en disco
+
+**Comandos básicos:**
+```bash
+# 1. Clonar
+git clone https://github.com/CuchoLeo/Fuga.git
+cd Fuga
+git checkout claude/create-docker-image-011CUWiCdkyttEZPktomfqF1
+
+# 2. Descargar dataset (manual desde Kaggle)
+# https://www.kaggle.com/datasets/shrutimechlearn/churn-modelling
+
+# 3. Construir, entrenar e iniciar
+docker-compose build
+docker-compose run --rm churn-api python train_churn_prediction.py
+docker-compose up -d
+
+# 4. Abrir navegador
+open http://localhost:8000/docs
+```
+
+---
+
 ## 📋 Descripción del Problema
 
 **Situación Actual:**
@@ -53,25 +91,33 @@ Sistema de IA que predice qué clientes están en riesgo de abandonar, con chat 
 
 ## 📦 Instalación
 
-### 1. Requisitos Previos
+### ⭐ Opción 1: Docker (Recomendado)
+
+**La forma más fácil y rápida de empezar:**
+
+👉 **Ver guía completa:** [INSTALACION_DOCKER.md](INSTALACION_DOCKER.md)
 
 ```bash
-Python 3.8+
-CUDA (opcional, para GPU)
+docker-compose build
+docker-compose run --rm churn-api python train_churn_prediction.py
+docker-compose up -d
 ```
 
-### 2. Instalar Dependencias
+✅ No necesitas instalar Python, dependencias ni configurar nada
+✅ Todo funciona en un contenedor aislado
+✅ Incluye todas las dependencias pre-instaladas
 
-```bash
-pip install torch torchvision torchaudio
-pip install transformers
-pip install fastapi uvicorn
-pip install pandas scikit-learn
-pip install requests
-```
+---
 
-O usa requirements.txt:
+### 🐍 Opción 2: Instalación con Python Local
 
+**Solo si no quieres usar Docker:**
+
+**Requisitos:**
+- Python 3.8+
+- CUDA (opcional, para GPU)
+
+**Instalar dependencias:**
 ```bash
 pip install -r requirements.txt
 ```
@@ -80,9 +126,13 @@ pip install -r requirements.txt
 ```
 torch>=2.0.0
 transformers>=4.30.0
+accelerate>=0.26.0
+datasets>=2.14.0
 fastapi>=0.100.0
-uvicorn>=0.22.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
 pandas>=2.0.0
+numpy>=1.24.0
 scikit-learn>=1.3.0
 requests>=2.31.0
 python-multipart>=0.0.6
@@ -90,7 +140,7 @@ python-multipart>=0.0.6
 
 ---
 
-## 🚀 Guía de Uso Rápido
+## 🚀 Guía de Uso Rápido (Sin Docker)
 
 ### Paso 1: Descargar el Dataset
 
