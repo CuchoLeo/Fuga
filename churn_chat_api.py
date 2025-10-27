@@ -339,74 +339,205 @@ class ChurnChatSystem:
         return at_risk[:limit]
     
     def generate_llm_response(self, query: str, context: Dict[str, Any]) -> str:
-        """Genera respuesta usando el LLM con contexto"""
+        """Genera respuesta conversacional usando el LLM con contexto rico"""
         if self.llm_model is None:
             return "Lo siento, el modelo de lenguaje no está disponible."
-        
-        # Construir prompt con contexto
-        prompt = self._build_prompt(query, context)
-        
-        # Generar respuesta
-        inputs = self.llm_tokenizer(
-            prompt,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=512
-        )
-        
-        with torch.no_grad():
-            outputs = self.llm_model.generate(
-                **inputs,
-                max_new_tokens=200,
-                temperature=0.7,
-                do_sample=True,
-                top_p=0.9,
-                pad_token_id=self.llm_tokenizer.pad_token_id
+
+        try:
+            # Construir prompt con contexto
+            prompt = self._build_prompt(query, context)
+
+            # Generar respuesta
+            inputs = self.llm_tokenizer(
+                prompt,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=1024  # Aumentado de 512 para más contexto
             )
-        
-        response = self.llm_tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Limpiar el prompt de la respuesta
-        if prompt in response:
-            response = response.replace(prompt, "").strip()
-        
-        return response
+
+            with torch.no_grad():
+                outputs = self.llm_model.generate(
+                    **inputs,
+                    max_new_tokens=500,  # Aumentado de 200 para respuestas más completas
+                    temperature=0.7,  # Balance entre creatividad y coherencia
+                    do_sample=True,
+                    top_p=0.9,
+                    top_k=50,
+                    repetition_penalty=1.2,  # Evitar repeticiones
+                    no_repeat_ngram_size=3,  # No repetir secuencias de 3 palabras
+                    pad_token_id=self.llm_tokenizer.pad_token_id,
+                    eos_token_id=self.llm_tokenizer.eos_token_id
+                )
+
+            response = self.llm_tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+            # Limpiar el prompt de la respuesta
+            if prompt in response:
+                response = response.replace(prompt, "").strip()
+
+            # Buscar la sección de respuesta y extraerla
+            if "Respuesta:" in response:
+                response = response.split("Respuesta:")[-1].strip()
+
+            # Si la respuesta está vacía o es muy corta, generar recomendaciones estructuradas
+            if len(response) < 50:
+                response = self._generate_recommendations(context)
+
+            return response
+
+        except Exception as e:
+            print(f"Error generando respuesta LLM: {e}")
+            return self._generate_recommendations(context)
     
-    def _build_prompt(self, query: str, context: Dict[str, Any]) -> str:
-        """Construye un prompt informado con contexto"""
-        prompt_parts = [
-            "Eres un asistente experto en análisis de churn (fuga de clientes).",
-            "Tu empresa tiene un problema serio:",
-            "- Tasa de churn anual: 25%",
-            "- Clientes perdidos/mes: 2,500",
-            "- Enfoque: clientes de alto valor (Balance > $100,000)",
-            "- Costo de retención = 1/5 del costo de adquisición",
-            "\nInformación actual:"
-        ]
-        
-        if "statistics" in context:
-            stats = context["statistics"]
-            prompt_parts.append(f"- Total clientes: {stats.get('total_customers', 'N/A')}")
-            prompt_parts.append(f"- Tasa de churn: {stats.get('churn_rate', 0)*100:.1f}%")
-            if "monthly_churned" in stats:
-                prompt_parts.append(f"- Clientes perdidos/mes: {stats['monthly_churned']}")
-        
+    def _generate_recommendations(self, context: Dict[str, Any]) -> str:
+        """Genera recomendaciones personalizadas basadas en el contexto"""
+        recommendations = []
+
+        # Recomendaciones basadas en clientes en riesgo
         if "at_risk_customers" in context:
             at_risk = context["at_risk_customers"]
-            prompt_parts.append(f"\n- Clientes en riesgo identificados: {len(at_risk)}")
             if at_risk:
-                prompt_parts.append(f"- Mayor riesgo: {at_risk[0].get('churn_probability', 0)*100:.1f}% de probabilidad")
-        
+                high_value_count = sum(1 for c in at_risk if c['balance'] > 100000)
+                inactive_count = sum(1 for c in at_risk if not c['is_active'])
+
+                recommendations.append(f"🎯 **Análisis de Clientes en Riesgo:**")
+                recommendations.append(f"   • {len(at_risk)} clientes identificados con alta probabilidad de churn")
+                recommendations.append(f"   • {high_value_count} son clientes de alto valor (Balance > $100k)")
+                recommendations.append(f"   • {inactive_count} clientes están inactivos")
+
+                recommendations.append("\n💡 **Recomendaciones Prioritarias:**")
+
+                if high_value_count > 0:
+                    recommendations.append(
+                        f"   1. **URGENTE**: Contactar a los {high_value_count} clientes de alto valor en riesgo\n"
+                        "      - Asignar account manager dedicado\n"
+                        "      - Ofrecer consultoría financiera personalizada\n"
+                        "      - Incentivos exclusivos por lealtad"
+                    )
+
+                if inactive_count > 0:
+                    recommendations.append(
+                        f"   2. Reactivar {inactive_count} clientes inactivos:\n"
+                        "      - Campaña de re-engagement con beneficios especiales\n"
+                        "      - Encuesta para entender razones de inactividad\n"
+                        "      - Simplificar proceso de uso del servicio"
+                    )
+
+                recommendations.append(
+                    "   3. Estrategias de retención general:\n"
+                    "      - Programa de fidelización escalonado\n"
+                    "      - Comunicación proactiva trimestral\n"
+                    "      - Mejoras en servicio al cliente"
+                )
+
+                # Detalles de top clientes
+                recommendations.append("\n📊 **Top 3 Clientes Prioritarios:**")
+                for i, customer in enumerate(at_risk[:3], 1):
+                    prob_pct = customer['churn_probability'] * 100
+                    recommendations.append(
+                        f"   {i}. Cliente #{customer['customer_id']}: {prob_pct:.1f}% riesgo, "
+                        f"${customer['balance']:,.0f} balance\n"
+                        f"      → {'🔴 INACTIVO - Contactar inmediatamente' if not customer['is_active'] else '🟡 Activo - Programa de retención preventivo'}"
+                    )
+
+        # Recomendaciones basadas en estadísticas
+        elif "statistics" in context:
+            stats = context["statistics"]
+            churn_rate = stats.get('churn_rate', 0) * 100
+
+            recommendations.append(f"📊 **Análisis de la Situación Actual:**")
+            recommendations.append(f"   • Tasa de churn: {churn_rate:.1f}%")
+            recommendations.append(f"   • Total de clientes: {stats.get('total_customers', 0):,}")
+
+            if churn_rate > 20:
+                recommendations.append("\n⚠️ **ALERTA**: Tasa de churn crítica (>20%)")
+                recommendations.append("\n💡 **Acciones Recomendadas Inmediatas:**")
+                recommendations.append(
+                    "   1. Auditoría de experiencia del cliente\n"
+                    "   2. Análisis de competencia y benchmarking\n"
+                    "   3. Implementar sistema de alertas tempranas\n"
+                    "   4. Crear equipo dedicado a retención"
+                )
+
+            if "monthly_churned" in stats:
+                monthly_loss = stats['monthly_churned']
+                recommendations.append(
+                    f"\n💰 **Impacto Económico:**\n"
+                    f"   • Pérdida mensual: ~{monthly_loss:,} clientes\n"
+                    f"   • ROI de retención: 5x (costo retención = 1/5 costo adquisición)\n"
+                    f"   • Priorizar inversión en retención predictiva"
+                )
+
+        else:
+            recommendations.append(
+                "💬 **Puedo ayudarte con:**\n"
+                "   • Identificar clientes en riesgo de churn\n"
+                "   • Analizar estadísticas y tendencias\n"
+                "   • Generar recomendaciones personalizadas\n"
+                "   • Priorizar acciones de retención\n\n"
+                "Pregúntame sobre clientes en riesgo, estadísticas de churn, o recomendaciones específicas."
+            )
+
+        return "\n".join(recommendations)
+
+    def _build_prompt(self, query: str, context: Dict[str, Any]) -> str:
+        """Construye un prompt conversacional con contexto rico"""
+        prompt_parts = [
+            "Eres un consultor experto en retención de clientes y análisis de churn.",
+            "Tu rol es ayudar a empresas a reducir la fuga de clientes mediante insights accionables.",
+            "\n### CONTEXTO DEL NEGOCIO:",
+            "- Industria: Servicios financieros/bancarios",
+            "- Tasa de churn anual actual: 25% (crítico)",
+            "- Clientes perdidos por mes: ~2,500",
+            "- Enfoque prioritario: Clientes de alto valor (Balance > $100,000)",
+            "- Economía de retención: El costo de retener un cliente es 1/5 del costo de adquirir uno nuevo",
+            "- Impacto: Cada cliente perdido representa pérdida de ingresos recurrentes y valor de vida del cliente",
+        ]
+
+        if "statistics" in context:
+            stats = context["statistics"]
+            prompt_parts.append("\n### DATOS ACTUALES:")
+            prompt_parts.append(f"- Total de clientes en base: {stats.get('total_customers', 'N/A'):,}")
+            prompt_parts.append(f"- Tasa de churn actual: {stats.get('churn_rate', 0)*100:.1f}%")
+            prompt_parts.append(f"- Balance promedio: ${stats.get('avg_balance', 0):,.2f}")
+            prompt_parts.append(f"- Edad promedio: {stats.get('avg_age', 0):.0f} años")
+            if "monthly_churned" in stats:
+                prompt_parts.append(f"- Clientes perdidos este mes: {stats['monthly_churned']:,}")
+            if "estimated_monthly_loss" in stats:
+                prompt_parts.append(f"- Pérdida estimada mensual: ${stats['estimated_monthly_loss']:,.2f}")
+
+        if "at_risk_customers" in context:
+            at_risk = context["at_risk_customers"]
+            if at_risk:
+                prompt_parts.append(f"\n### CLIENTES EN RIESGO IDENTIFICADOS: {len(at_risk)}")
+                for i, customer in enumerate(at_risk[:5], 1):  # Top 5
+                    prompt_parts.append(
+                        f"{i}. Cliente #{customer['customer_id']}: "
+                        f"{customer['churn_probability']*100:.1f}% probabilidad, "
+                        f"Balance ${customer['balance']:,.0f}, "
+                        f"Edad {customer['age']}, "
+                        f"{'Activo' if customer['is_active'] else 'Inactivo'}"
+                    )
+                if len(at_risk) > 5:
+                    prompt_parts.append(f"... y {len(at_risk) - 5} clientes más en riesgo")
+
         if "prediction" in context:
             pred = context["prediction"]
-            prompt_parts.append(f"\nPredicción realizada:")
+            prompt_parts.append("\n### PREDICCIÓN ESPECÍFICA:")
             prompt_parts.append(f"- Probabilidad de churn: {pred.get('churn_probability', 0)*100:.1f}%")
             prompt_parts.append(f"- Nivel de riesgo: {pred.get('risk_level', 'N/A')}")
-        
-        prompt_parts.append(f"\nPregunta del usuario: {query}")
-        prompt_parts.append("\nRespuesta concisa y accionable:")
-        
+            prompt_parts.append(f"- Prioridad de retención: {pred.get('retention_priority', 'N/A')}")
+
+        prompt_parts.append(f"\n### PREGUNTA DEL USUARIO:\n{query}")
+        prompt_parts.append("\n### TU RESPUESTA:")
+        prompt_parts.append("Proporciona una respuesta conversacional, clara y accionable que incluya:")
+        prompt_parts.append("1. Análisis de la situación basado en los datos")
+        prompt_parts.append("2. Insights específicos y relevantes")
+        prompt_parts.append("3. Recomendaciones concretas y priorizadas")
+        prompt_parts.append("4. Próximos pasos sugeridos")
+        prompt_parts.append("\nRespuesta:")
+
         return "\n".join(prompt_parts)
 
 # Inicializar sistema global
@@ -478,12 +609,8 @@ async def chat(request: ChatRequest):
                 high_value_only=intent.get("high_value", False)
             )
         
-        # Generar respuesta con LLM
+        # Generar respuesta con LLM o recomendaciones
         response_text = chat_system.generate_llm_response(query, context)
-        
-        # Si la respuesta del LLM es muy corta o no informativa, crear una respuesta estructurada
-        if len(response_text) < 20 or "no está disponible" in response_text.lower():
-            response_text = chat_system._create_structured_response(query, context)
         
         return ChatResponse(
             response=response_text,
