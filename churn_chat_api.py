@@ -291,19 +291,24 @@ class ChurnChatSystem:
         """Obtiene lista de clientes en riesgo"""
         if self.customer_database is None or self.churn_model is None:
             return []
-        
+
         df = self.customer_database.copy()
-        
+
         # Filtrar alto valor si se requiere
         if high_value_only and 'Balance' in df.columns:
             df = df[df['Balance'] > 100000]
-        
+
         # Predecir para cada cliente (limitado para performance)
-        sample_size = min(1000, len(df))
+        # Reducido de 1000 a 100 para mejor rendimiento
+        sample_size = min(100, len(df))
         df_sample = df.sample(n=sample_size, random_state=42)
         
         at_risk = []
         for idx, row in df_sample.iterrows():
+            # Early stopping: si ya tenemos suficientes clientes, parar
+            if len(at_risk) >= limit * 3:
+                break
+
             customer_data = {
                 'CreditScore': row.get('CreditScore', 0),
                 'Geography': row.get('Geography', ''),
@@ -316,9 +321,9 @@ class ChurnChatSystem:
                 'IsActiveMember': row.get('IsActiveMember', 0),
                 'EstimatedSalary': row.get('EstimatedSalary', 0)
             }
-            
+
             prediction = self.predict_churn(customer_data)
-            
+
             if prediction.get('churn_probability', 0) > 0.5:
                 at_risk.append({
                     'customer_id': int(row.get('CustomerId', idx)),
