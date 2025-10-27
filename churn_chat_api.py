@@ -1,15 +1,16 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
-import torch
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSequenceClassification
-import pickle
-import json
-from datetime import datetime
+from fastapi import FastAPI, HTTPException  # Framework web para crear la API REST
+from fastapi.middleware.cors import CORSMiddleware  # Middleware para permitir peticiones desde otros dominios
+from pydantic import BaseModel  # Validación de datos con tipos
+from typing import List, Optional, Dict, Any  # Tipos de datos para type hints
+import torch  # PyTorch para ejecutar modelos de deep learning
+import pandas as pd  # Manejo de datasets y DataFrames
+import numpy as np  # Operaciones numéricas y arrays
+from pathlib import Path  # Manejo de rutas de archivos multiplataforma
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoModelForSequenceClassification  # Modelos de Hugging Face
+import pickle  # Serialización de objetos Python (scaler, encoders)
+import json  # Manejo de datos JSON
+from datetime import datetime  # Timestamps para respuestas
+import os  # Acceso a variables de entorno
 
 # ============================================================================
 # CONFIGURACIÓN DE LA API
@@ -104,36 +105,90 @@ class ChurnChatSystem:
         else:
             print("⚠️  Modelo de churn no encontrado. Ejecuta train_churn_prediction.py primero")
         
-        # 2. Cargar modelo LLM para conversación
+        # ========================================================================
+        # 2. CARGAR MODELO LLM PARA CONVERSACIÓN (Llama 3.2)
+        # ========================================================================
         try:
+            # Obtener el token de Hugging Face desde la variable de entorno
+            # Este token es necesario para acceder a modelos "gated" como Llama 3.2
+            hf_token = os.getenv("HUGGING_FACE_HUB_TOKEN")
+
+            # Verificar si existe una carpeta con modelo ya descargado localmente
             llm_model_path = Path("trained_model")
+
+            # CASO 1: Si el modelo ya está descargado localmente en trained_model/
             if llm_model_path.exists():
-                print("🤖 Cargando LLM para conversación...")
-                self.llm_tokenizer = AutoTokenizer.from_pretrained(llm_model_path)
-                self.llm_model = AutoModelForCausalLM.from_pretrained(
-                    llm_model_path,
-                    torch_dtype=torch.float32
+                print("🤖 Cargando LLM desde disco local (trained_model/)...")
+
+                # Cargar el tokenizer (convierte texto a números que el modelo entiende)
+                self.llm_tokenizer = AutoTokenizer.from_pretrained(
+                    llm_model_path,  # Ruta local del modelo
+                    token=hf_token   # Token por si necesita verificar licencia
                 )
+
+                # Cargar el modelo de lenguaje (LLM) para generar texto
+                self.llm_model = AutoModelForCausalLM.from_pretrained(
+                    llm_model_path,          # Ruta local del modelo
+                    torch_dtype=torch.float32,  # Usar float32 para compatibilidad (más lento pero más preciso)
+                    token=hf_token           # Token de autenticación
+                )
+
+                # Poner el modelo en modo evaluación (desactiva dropout, etc.)
                 self.llm_model.eval()
+
+                # Si el tokenizer no tiene pad_token, usar eos_token como reemplazo
+                # pad_token se usa para rellenar secuencias cortas al mismo tamaño
                 if self.llm_tokenizer.pad_token is None:
                     self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
-                print("✅ LLM cargado")
+
+                print("✅ LLM cargado exitosamente desde disco")
+
+            # CASO 2: Si NO existe localmente, descargar de Hugging Face
             else:
-                print("⚠️  LLM no encontrado. Intentando descargar modelo base...")
+                print("⚠️  Modelo LLM no encontrado localmente")
+                print("🌐 Descargando Llama 3.2 desde Hugging Face...")
+                print(f"📥 Esto puede tardar varios minutos (descarga ~4GB)...")
+
+                # ID del modelo en Hugging Face Hub
                 model_id = "meta-llama/Llama-3.2-1B-Instruct"
-                self.llm_tokenizer = AutoTokenizer.from_pretrained(model_id)
-                self.llm_model = AutoModelForCausalLM.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.float32
+
+                # Descargar y cargar el tokenizer desde Hugging Face
+                print("📦 Descargando tokenizer...")
+                self.llm_tokenizer = AutoTokenizer.from_pretrained(
+                    model_id,       # Identificador del modelo en HF
+                    token=hf_token  # Token NECESARIO para modelos gated de Meta
                 )
+
+                # Descargar y cargar el modelo completo desde Hugging Face
+                print("📦 Descargando modelo (esto tomará varios minutos)...")
+                self.llm_model = AutoModelForCausalLM.from_pretrained(
+                    model_id,                    # Identificador del modelo
+                    torch_dtype=torch.float32,   # Tipo de datos para los pesos
+                    token=hf_token,              # Token REQUERIDO para Llama
+                    cache_dir="./trained_model"  # Guardar en esta carpeta para reutilizar
+                )
+
+                # Poner el modelo en modo evaluación (no entrenamiento)
                 self.llm_model.eval()
+
+                # Configurar pad_token si no existe
                 if self.llm_tokenizer.pad_token is None:
                     self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
-                print("✅ LLM base descargado y cargado")
+
+                print("✅ LLM descargado y cargado exitosamente")
+                print("💾 Modelo guardado en ./trained_model/ para futuros usos")
+
+        # Manejo de errores en la carga del LLM
         except Exception as e:
-            print(f"⚠️  Error al cargar LLM: {e}")
-            print("⚠️  La API funcionará sin capacidades de chat LLM avanzadas")
-            print("⚠️  Solo respuestas estructuradas estarán disponibles")
+            print(f"❌ Error al cargar LLM: {e}")
+            print("⚠️  Posibles causas:")
+            print("   - Token de Hugging Face inválido o expirado")
+            print("   - No aceptaste los términos de Llama 3.2 en Hugging Face")
+            print("   - Sin conexión a internet para descargar el modelo")
+            print("   - Memoria insuficiente (Llama 3.2 requiere ~4GB RAM)")
+            print("⚠️  La API funcionará con respuestas estructuradas (sin LLM)")
+
+            # Configurar a None para que el sistema use respuestas estructuradas
             self.llm_model = None
             self.llm_tokenizer = None
         
@@ -339,55 +394,94 @@ class ChurnChatSystem:
         return at_risk[:limit]
     
     def generate_llm_response(self, query: str, context: Dict[str, Any]) -> str:
-        """Genera respuesta conversacional usando el LLM con contexto rico"""
+        """
+        Genera respuesta conversacional usando el LLM (Llama 3.2) con contexto rico
+
+        Args:
+            query: Pregunta del usuario en lenguaje natural
+            context: Diccionario con datos (estadísticas, clientes en riesgo, etc.)
+
+        Returns:
+            Respuesta en texto generada por el LLM
+        """
+        # Si el LLM no está cargado, usar sistema de recomendaciones estructuradas
         if self.llm_model is None:
             return "Lo siento, el modelo de lenguaje no está disponible."
 
         try:
-            # Construir prompt con contexto
+            # ====================================================================
+            # PASO 1: Construir el prompt con contexto
+            # ====================================================================
+            # El prompt es la "instrucción completa" que le damos al LLM
+            # Incluye: rol del asistente, contexto de negocio, datos actuales, y la pregunta
             prompt = self._build_prompt(query, context)
 
-            # Generar respuesta
+            # ====================================================================
+            # PASO 2: Tokenizar el prompt (convertir texto a números)
+            # ====================================================================
+            # Los modelos de lenguaje no entienden texto, solo números (tokens)
             inputs = self.llm_tokenizer(
-                prompt,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=1024  # Aumentado de 512 para más contexto
+                prompt,                        # Texto a convertir
+                return_tensors="pt",           # Devolver tensores de PyTorch
+                padding=True,                  # Rellenar para tamaño uniforme
+                truncation=True,               # Cortar si es muy largo
+                max_length=1024                # Longitud máxima del contexto (más contexto = mejor)
             )
 
+            # ====================================================================
+            # PASO 3: Generar respuesta con el modelo LLM
+            # ====================================================================
+            # torch.no_grad() = no calcular gradientes (más rápido, menos memoria)
             with torch.no_grad():
                 outputs = self.llm_model.generate(
-                    **inputs,
-                    max_new_tokens=500,  # Aumentado de 200 para respuestas más completas
-                    temperature=0.7,  # Balance entre creatividad y coherencia
-                    do_sample=True,
-                    top_p=0.9,
-                    top_k=50,
-                    repetition_penalty=1.2,  # Evitar repeticiones
-                    no_repeat_ngram_size=3,  # No repetir secuencias de 3 palabras
-                    pad_token_id=self.llm_tokenizer.pad_token_id,
-                    eos_token_id=self.llm_tokenizer.eos_token_id
+                    **inputs,                      # Pasar todos los inputs tokenizados
+
+                    # Parámetros de generación:
+                    max_new_tokens=500,            # Generar hasta 500 tokens nuevos (~400 palabras)
+                    temperature=0.7,               # Controla creatividad (0=determinista, 1=creativo)
+                                                   # 0.7 es un buen balance para respuestas profesionales
+
+                    do_sample=True,                # Activar muestreo (permite variedad)
+                    top_p=0.9,                     # Nucleus sampling: solo considerar tokens que sumen 90% probabilidad
+                    top_k=50,                      # Solo considerar los 50 tokens más probables
+
+                    repetition_penalty=1.2,        # Penalizar palabras repetidas (1.0=sin penalización)
+                    no_repeat_ngram_size=3,        # No repetir secuencias de 3 palabras
+
+                    pad_token_id=self.llm_tokenizer.pad_token_id,  # ID del token de relleno
+                    eos_token_id=self.llm_tokenizer.eos_token_id   # ID del token de fin de secuencia
                 )
 
+            # ====================================================================
+            # PASO 4: Decodificar (convertir números de vuelta a texto)
+            # ====================================================================
+            # skip_special_tokens=True elimina tokens como <pad>, <eos>, etc.
             response = self.llm_tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-            # Limpiar el prompt de la respuesta
+            # ====================================================================
+            # PASO 5: Limpiar la respuesta
+            # ====================================================================
+            # El modelo a veces incluye el prompt completo en la salida, eliminarlo
             if prompt in response:
                 response = response.replace(prompt, "").strip()
 
-            # Buscar la sección de respuesta y extraerla
+            # Extraer solo la parte de respuesta después de "Respuesta:"
             if "Respuesta:" in response:
                 response = response.split("Respuesta:")[-1].strip()
 
-            # Si la respuesta está vacía o es muy corta, generar recomendaciones estructuradas
+            # Si la respuesta es muy corta o vacía, usar recomendaciones estructuradas
+            # Esto es un fallback por si el LLM no generó bien
             if len(response) < 50:
                 response = self._generate_recommendations(context)
 
             return response
 
+        # ====================================================================
+        # Manejo de errores durante la generación
+        # ====================================================================
         except Exception as e:
-            print(f"Error generando respuesta LLM: {e}")
+            print(f"❌ Error generando respuesta LLM: {e}")
+            # Fallback: usar sistema de recomendaciones estructuradas
             return self._generate_recommendations(context)
     
     def _generate_recommendations(self, context: Dict[str, Any]) -> str:
@@ -482,10 +576,31 @@ class ChurnChatSystem:
         return "\n".join(recommendations)
 
     def _build_prompt(self, query: str, context: Dict[str, Any]) -> str:
-        """Construye un prompt conversacional con contexto rico"""
+        """
+        Construye un prompt conversacional con contexto rico para el LLM
+
+        El prompt es fundamental para obtener buenas respuestas del LLM.
+        Incluye: rol, contexto de negocio, datos actuales, y la pregunta del usuario.
+
+        Args:
+            query: Pregunta del usuario
+            context: Datos relevantes (estadísticas, clientes en riesgo, etc.)
+
+        Returns:
+            Prompt formateado listo para enviar al LLM
+        """
+        # ====================================================================
+        # SECCIÓN 1: Definir el rol del asistente (system message)
+        # ====================================================================
+        # Esto le dice al LLM "quién es" y cómo debe comportarse
         prompt_parts = [
             "Eres un consultor experto en retención de clientes y análisis de churn.",
             "Tu rol es ayudar a empresas a reducir la fuga de clientes mediante insights accionables.",
+
+            # ================================================================
+            # SECCIÓN 2: Contexto del negocio (información estática)
+            # ================================================================
+            # Información que siempre es relevante, independiente de la consulta
             "\n### CONTEXTO DEL NEGOCIO:",
             "- Industria: Servicios financieros/bancarios",
             "- Tasa de churn anual actual: 25% (crítico)",
@@ -495,23 +610,37 @@ class ChurnChatSystem:
             "- Impacto: Cada cliente perdido representa pérdida de ingresos recurrentes y valor de vida del cliente",
         ]
 
+        # ====================================================================
+        # SECCIÓN 3: Datos actuales (dinámicos según la consulta)
+        # ====================================================================
+        # Si el contexto incluye estadísticas, agregarlas al prompt
         if "statistics" in context:
             stats = context["statistics"]
             prompt_parts.append("\n### DATOS ACTUALES:")
+            # Formatear números con separadores de miles para mejor lectura
             prompt_parts.append(f"- Total de clientes en base: {stats.get('total_customers', 'N/A'):,}")
             prompt_parts.append(f"- Tasa de churn actual: {stats.get('churn_rate', 0)*100:.1f}%")
             prompt_parts.append(f"- Balance promedio: ${stats.get('avg_balance', 0):,.2f}")
             prompt_parts.append(f"- Edad promedio: {stats.get('avg_age', 0):.0f} años")
+
+            # Agregar métricas opcionales si están disponibles
             if "monthly_churned" in stats:
                 prompt_parts.append(f"- Clientes perdidos este mes: {stats['monthly_churned']:,}")
             if "estimated_monthly_loss" in stats:
                 prompt_parts.append(f"- Pérdida estimada mensual: ${stats['estimated_monthly_loss']:,.2f}")
 
+        # ====================================================================
+        # SECCIÓN 4: Clientes en riesgo (si aplica)
+        # ====================================================================
+        # Si la consulta requiere análisis de clientes específicos
         if "at_risk_customers" in context:
             at_risk = context["at_risk_customers"]
             if at_risk:
                 prompt_parts.append(f"\n### CLIENTES EN RIESGO IDENTIFICADOS: {len(at_risk)}")
-                for i, customer in enumerate(at_risk[:5], 1):  # Top 5
+
+                # Mostrar los top 5 clientes con más riesgo
+                # Esto ayuda al LLM a dar recomendaciones específicas
+                for i, customer in enumerate(at_risk[:5], 1):  # Solo top 5 para no saturar el prompt
                     prompt_parts.append(
                         f"{i}. Cliente #{customer['customer_id']}: "
                         f"{customer['churn_probability']*100:.1f}% probabilidad, "
@@ -519,9 +648,15 @@ class ChurnChatSystem:
                         f"Edad {customer['age']}, "
                         f"{'Activo' if customer['is_active'] else 'Inactivo'}"
                     )
+
+                # Si hay más de 5, indicarlo
                 if len(at_risk) > 5:
                     prompt_parts.append(f"... y {len(at_risk) - 5} clientes más en riesgo")
 
+        # ====================================================================
+        # SECCIÓN 5: Predicción específica (si aplica)
+        # ====================================================================
+        # Si se hizo una predicción para un cliente particular
         if "prediction" in context:
             pred = context["prediction"]
             prompt_parts.append("\n### PREDICCIÓN ESPECÍFICA:")
@@ -529,7 +664,15 @@ class ChurnChatSystem:
             prompt_parts.append(f"- Nivel de riesgo: {pred.get('risk_level', 'N/A')}")
             prompt_parts.append(f"- Prioridad de retención: {pred.get('retention_priority', 'N/A')}")
 
+        # ====================================================================
+        # SECCIÓN 6: La pregunta del usuario
+        # ====================================================================
         prompt_parts.append(f"\n### PREGUNTA DEL USUARIO:\n{query}")
+
+        # ====================================================================
+        # SECCIÓN 7: Instrucciones para la respuesta
+        # ====================================================================
+        # Esto guía al LLM sobre qué tipo de respuesta queremos
         prompt_parts.append("\n### TU RESPUESTA:")
         prompt_parts.append("Proporciona una respuesta conversacional, clara y accionable que incluya:")
         prompt_parts.append("1. Análisis de la situación basado en los datos")
@@ -538,6 +681,7 @@ class ChurnChatSystem:
         prompt_parts.append("4. Próximos pasos sugeridos")
         prompt_parts.append("\nRespuesta:")
 
+        # Unir todas las partes con saltos de línea
         return "\n".join(prompt_parts)
 
 # Inicializar sistema global
