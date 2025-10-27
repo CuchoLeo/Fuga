@@ -1,9 +1,14 @@
-# Git
+# ============================================
+# Git files
+# ============================================
 .git
 .gitignore
 .gitattributes
+.github
 
+# ============================================
 # Python
+# ============================================
 __pycache__
 *.py[cod]
 *$py.class
@@ -17,35 +22,67 @@ build
 .coverage
 htmlcov
 .tox
-.venv
-venv
-env
-ENV
+.mypy_cache
+.dmypy.json
+dmypy.json
 
-# IDE
-.vscode
-.idea
+# ============================================
+# Virtual environments
+# ============================================
+.venv
+venv/
+env/
+ENV/
+virtualenv/
+
+# ============================================
+# IDEs
+# ============================================
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
 
-# Docker
+# ============================================
+# Jupyter
+# ============================================
+.ipynb_checkpoints
+*.ipynb
+
+# ============================================
+# Docker files (no necesarios dentro de la imagen)
+# ============================================
 Dockerfile
+Dockerfile.*
+docker-compose*.yml
 .dockerignore
-docker-compose.yml
 
+# ============================================
 # Documentation
-README.md
-README_CHURN_SYSTEM.md
+# ============================================
+README*.md
 *.md
+docs/
 
+# ============================================
 # Logs
+# ============================================
 *.log
+logs/
 
-# Modelos entrenados grandes (opcional - descomentar si prefieres descargarlos en runtime)
+# ============================================
+# Modelos entrenados (se montarán como volúmenes)
+# ============================================
+# Descomenta estas líneas si prefieres descargar modelos en runtime
 # churn_model/
 # trained_model/
+
+# ============================================
+# OS files
+# ============================================
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
