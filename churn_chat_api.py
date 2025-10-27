@@ -237,7 +237,7 @@ class ChurnChatSystem:
         }
         
         # Detectar intenciones (pueden ser múltiples)
-        if any(word in query_lower for word in ["cuántos", "cantidad", "lista", "clientes en riesgo", "top", "dame", "muestra", "quiero ver"]):
+        if any(word in query_lower for word in ["cuántos", "cantidad", "lista", "clientes en riesgo", "top", "dame", "muestra", "quiero ver", "fuga", "mayor riesgo", "más riesgo", "con riesgo", "riesgo de"]):
             intent["type"] = "analysis"
             intent["requires_analysis"] = True
 
