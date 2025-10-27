@@ -236,20 +236,18 @@ class ChurnChatSystem:
             "requires_statistics": False
         }
         
-        # Detectar intenciones
-        if any(word in query_lower for word in ["predice", "predicción", "riesgo", "probabilidad", "churn"]):
-            intent["type"] = "prediction"
-            intent["requires_prediction"] = True
-        
-        elif any(word in query_lower for word in ["cuántos", "cantidad", "lista", "clientes en riesgo", "top"]):
+        # Detectar intenciones (pueden ser múltiples)
+        if any(word in query_lower for word in ["cuántos", "cantidad", "lista", "clientes en riesgo", "top", "dame", "muestra", "quiero ver"]):
             intent["type"] = "analysis"
             intent["requires_analysis"] = True
-        
-        elif any(word in query_lower for word in ["tasa", "porcentaje", "estadística", "métrica", "promedio"]):
-            intent["type"] = "statistics"
+
+        if any(word in query_lower for word in ["tasa", "porcentaje", "estadística", "métrica", "promedio"]):
             intent["requires_statistics"] = True
-        
-        elif any(word in query_lower for word in ["alto valor", "premium", "balance alto", "mayor"]):
+
+        if any(word in query_lower for word in ["predice", "predicción", "probabilidad"]):
+            intent["requires_prediction"] = True
+
+        if any(word in query_lower for word in ["alto valor", "premium", "balance alto", "mayor"]):
             intent["high_value"] = True
         
         return intent
