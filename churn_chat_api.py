@@ -157,25 +157,39 @@ class ChurnChatSystem:
         """Predice churn para un cliente específico"""
         if self.churn_model is None:
             return {"error": "Modelo de churn no disponible"}
-        
+
         try:
-            # Preparar features
+            # Crear una copia de los datos para no modificar el original
+            processed_data = customer_data.copy()
+
+            # Codificar variables categóricas usando los label encoders
+            if self.label_encoders:
+                for col_name, encoder in self.label_encoders.items():
+                    if col_name in processed_data:
+                        try:
+                            # Codificar el valor categórico
+                            processed_data[col_name] = encoder.transform([processed_data[col_name]])[0]
+                        except ValueError:
+                            # Si el valor no existe en el encoder, usar el más común (0)
+                            processed_data[col_name] = 0
+
+            # Preparar features en el orden correcto
             features = []
             for feature_name in self.feature_names:
-                if feature_name in customer_data:
-                    features.append(customer_data[feature_name])
+                if feature_name in processed_data:
+                    features.append(float(processed_data[feature_name]))
                 else:
                     features.append(0.0)
-            
+
             # Normalizar
             features_scaled = self.scaler.transform([features])
-            
+
             # Crear texto descriptivo
             text_parts = ["Cliente:"]
             for name, value in zip(self.feature_names, features_scaled[0]):
                 text_parts.append(f"{name}={value:.2f}")
             text = " ".join(text_parts)
-            
+
             # Tokenizar y predecir
             inputs = self.churn_tokenizer(
                 text,
@@ -184,13 +198,13 @@ class ChurnChatSystem:
                 truncation=True,
                 max_length=256
             )
-            
+
             with torch.no_grad():
                 outputs = self.churn_model(**inputs)
                 probabilities = torch.softmax(outputs.logits, dim=1)
                 prediction = torch.argmax(probabilities, dim=1).item()
                 churn_probability = probabilities[0][1].item()
-            
+
             return {
                 "will_churn": bool(prediction),
                 "churn_probability": float(churn_probability),
