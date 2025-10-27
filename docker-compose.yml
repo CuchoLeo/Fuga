@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Servicio principal: API de Churn Prediction
+  # ============================================
+  churn-api:
+    # Nombre del contenedor
+    container_name: churn-prediction-api
+
+    # Configuración de build
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Nombre de la imagen
+    image: churn-prediction-api:latest
+
+    # Mapeo de puertos (host:container)
+    ports:
+      - "8000:8000"
+
+    # Volúmenes: montar directorios locales en el contenedor
+    volumes:
+      # Modelos entrenados (persistencia)
+      - ./churn_model:/app/churn_model
+      - ./trained_model:/app/trained_model
+
+      # Dataset (solo lectura)
+      - ./Churn_Modelling.csv:/app/Churn_Modelling.csv:ro
+
+    # Variables de entorno
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - PYTHONUNBUFFERED=1
+
+    # Política de reinicio
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Red
+    networks:
+      - churn-network
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================
+# Redes
+# ============================================
+networks:
+  churn-network:
+    driver: bridge
+    name: churn-network
