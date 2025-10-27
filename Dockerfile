@@ -41,11 +41,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar archivos Python
 COPY *.py ./
 
-# Copiar dataset (si existe)
+# Copiar dataset
 COPY Churn_Modelling.csv ./
 
-# Copiar interfaz HTML (si existe)
-COPY *.html ./ 2>/dev/null || true
+# Copiar interfaz HTML
+COPY chat_interface.html ./
 
 # ============================================
 # STAGE 6: Crear directorios para modelos
