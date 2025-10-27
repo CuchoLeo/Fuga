@@ -105,29 +105,37 @@ class ChurnChatSystem:
             print("⚠️  Modelo de churn no encontrado. Ejecuta train_churn_prediction.py primero")
         
         # 2. Cargar modelo LLM para conversación
-        llm_model_path = Path("trained_model")
-        if llm_model_path.exists():
-            print("🤖 Cargando LLM para conversación...")
-            self.llm_tokenizer = AutoTokenizer.from_pretrained(llm_model_path)
-            self.llm_model = AutoModelForCausalLM.from_pretrained(
-                llm_model_path,
-                torch_dtype=torch.float32
-            )
-            self.llm_model.eval()
-            if self.llm_tokenizer.pad_token is None:
-                self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
-            print("✅ LLM cargado")
-        else:
-            print("⚠️  LLM no encontrado. Usando modelo base...")
-            model_id = "meta-llama/Llama-3.2-1B-Instruct"
-            self.llm_tokenizer = AutoTokenizer.from_pretrained(model_id)
-            self.llm_model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                torch_dtype=torch.float32
-            )
-            self.llm_model.eval()
-            if self.llm_tokenizer.pad_token is None:
-                self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
+        try:
+            llm_model_path = Path("trained_model")
+            if llm_model_path.exists():
+                print("🤖 Cargando LLM para conversación...")
+                self.llm_tokenizer = AutoTokenizer.from_pretrained(llm_model_path)
+                self.llm_model = AutoModelForCausalLM.from_pretrained(
+                    llm_model_path,
+                    torch_dtype=torch.float32
+                )
+                self.llm_model.eval()
+                if self.llm_tokenizer.pad_token is None:
+                    self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
+                print("✅ LLM cargado")
+            else:
+                print("⚠️  LLM no encontrado. Intentando descargar modelo base...")
+                model_id = "meta-llama/Llama-3.2-1B-Instruct"
+                self.llm_tokenizer = AutoTokenizer.from_pretrained(model_id)
+                self.llm_model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float32
+                )
+                self.llm_model.eval()
+                if self.llm_tokenizer.pad_token is None:
+                    self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
+                print("✅ LLM base descargado y cargado")
+        except Exception as e:
+            print(f"⚠️  Error al cargar LLM: {e}")
+            print("⚠️  La API funcionará sin capacidades de chat LLM avanzadas")
+            print("⚠️  Solo respuestas estructuradas estarán disponibles")
+            self.llm_model = None
+            self.llm_tokenizer = None
         
         # 3. Cargar base de datos de clientes (simulada)
         self.load_customer_database()
