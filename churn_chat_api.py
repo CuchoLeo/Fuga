@@ -611,8 +611,9 @@ class ChurnChatSystem:
         # ====================================================================
         # Esto le dice al LLM "quién es" y cómo debe comportarse
         prompt_parts = [
-            "Eres un consultor experto en retención de clientes y análisis de churn.",
-            "Tu rol es ayudar a empresas a reducir la fuga de clientes mediante insights accionables.",
+            "Eres Churnito, un asistente experto en retención de clientes y análisis de churn.",
+            "Tu nombre es Churnito y tu rol es ayudar a empresas a reducir la fuga de clientes mediante insights accionables.",
+            "Eres amigable, profesional y siempre proporcionas recomendaciones concretas.",
 
             # ================================================================
             # SECCIÓN 2: Contexto del negocio (información estática)
