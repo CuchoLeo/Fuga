@@ -451,8 +451,9 @@ class ChurnChatSystem:
                 outputs = self.llm_model.generate(
                     **inputs,                      # Pasar todos los inputs tokenizados
 
-                    # Parámetros de generación:
-                    max_new_tokens=500,            # Generar hasta 500 tokens nuevos (~400 palabras)
+                    # Parámetros de generación (OPTIMIZADOS PARA VELOCIDAD):
+                    max_new_tokens=150,            # Reducido de 500 a 150 (~120 palabras)
+                                                   # Respuestas más cortas = 3-4x más rápido
                     temperature=0.7,               # Controla creatividad (0=determinista, 1=creativo)
                                                    # 0.7 es un buen balance para respuestas profesionales
 
@@ -486,7 +487,8 @@ class ChurnChatSystem:
 
             # Si la respuesta es muy corta o vacía, usar recomendaciones estructuradas
             # Esto es un fallback por si el LLM no generó bien
-            if len(response) < 50:
+            # Umbral reducido a 30 porque ahora generamos respuestas más concisas
+            if len(response) < 30:
                 response = self._generate_recommendations(context)
 
             return response
