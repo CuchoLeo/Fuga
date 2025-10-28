@@ -411,7 +411,7 @@ class ChurnChatSystem:
     
     def generate_llm_response(self, query: str, context: Dict[str, Any]) -> str:
         """
-        Genera respuesta conversacional usando el LLM (Llama 3.2) con contexto rico
+        Genera respuesta conversacional usando el LLM (Qwen2.5) con contexto rico
 
         Args:
             query: Pregunta del usuario en lenguaje natural
@@ -420,6 +420,11 @@ class ChurnChatSystem:
         Returns:
             Respuesta en texto generada por el LLM
         """
+        # TEMPORAL: Usar sistema estructurado para mostrar datos reales confiablemente
+        # El LLM genera respuestas genéricas, el sistema estructurado muestra datos exactos
+        if "at_risk_customers" in context or "statistics" in context:
+            return self._generate_recommendations(context)
+
         # Si el LLM no está cargado, usar sistema de recomendaciones estructuradas
         if self.llm_model is None:
             return "Lo siento, el modelo de lenguaje no está disponible."
