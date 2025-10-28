@@ -211,12 +211,12 @@ print(f"🖥️  CUDA disponible: {torch.cuda.is_available()}")
 # Training arguments optimizados para churn prediction
 training_args = TrainingArguments(
     output_dir=str(checkpoint_dir),
-    num_train_epochs=3,  # Más epochs para mejor aprendizaje
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
+    num_train_epochs=1,  # Reducido a 1 época para entrenamiento rápido
+    per_device_train_batch_size=32,  # Aumentado para procesar más rápido
+    per_device_eval_batch_size=32,  # Aumentado para procesar más rápido
     eval_strategy="epoch",
     save_strategy="epoch",
-    logging_steps=10,
+    logging_steps=50,  # Menos logging = más rápido
     use_cpu=True,
     dataloader_pin_memory=False,
     dataloader_num_workers=0,
