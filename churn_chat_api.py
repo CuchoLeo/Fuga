@@ -116,71 +116,69 @@ class ChurnChatSystem:
         #   - Optimizado para seguir instrucciones
         #   - Licencia Apache 2.0 (completamente open source)
         try:
-            # Obtener el token de Hugging Face desde la variable de entorno
-            # NOTA: Qwen2.5 NO requiere token, pero lo leemos por si usamos otros modelos
-            hf_token = os.getenv("HUGGING_FACE_HUB_TOKEN")
+            # ID del modelo en Hugging Face Hub
+            # Qwen2.5-1.5B-Instruct: Modelo optimizado para seguir instrucciones
+            # NO requiere autenticación (a diferencia de Llama)
+            model_id = "Qwen/Qwen2.5-1.5B-Instruct"
 
-            # Verificar si existe una carpeta con modelo ya descargado localmente
+            # Intentar cargar desde disco local primero (para reutilizar descargas previas)
             llm_model_path = Path("trained_model")
+            loaded_from_disk = False
 
-            # CASO 1: Si el modelo ya está descargado localmente en trained_model/
             if llm_model_path.exists():
-                print("🤖 Cargando LLM desde disco local (trained_model/)...")
+                try:
+                    print("🤖 Intentando cargar LLM desde disco local (trained_model/)...")
 
-                # Cargar el tokenizer (convierte texto a números que el modelo entiende)
-                self.llm_tokenizer = AutoTokenizer.from_pretrained(
-                    llm_model_path,  # Ruta local del modelo
-                    trust_remote_code=True  # Necesario para modelos de Qwen
-                )
+                    # Intentar cargar el tokenizer
+                    self.llm_tokenizer = AutoTokenizer.from_pretrained(
+                        llm_model_path,
+                        trust_remote_code=True
+                    )
 
-                # Cargar el modelo de lenguaje (LLM) para generar texto
-                self.llm_model = AutoModelForCausalLM.from_pretrained(
-                    llm_model_path,          # Ruta local del modelo
-                    torch_dtype=torch.float32,  # Usar float32 para compatibilidad
-                    trust_remote_code=True   # Necesario para modelos de Qwen
-                )
+                    # Intentar cargar el modelo
+                    self.llm_model = AutoModelForCausalLM.from_pretrained(
+                        llm_model_path,
+                        torch_dtype=torch.float32,
+                        trust_remote_code=True
+                    )
 
-                # Poner el modelo en modo evaluación (desactiva dropout, etc.)
-                self.llm_model.eval()
+                    self.llm_model.eval()
 
-                # Si el tokenizer no tiene pad_token, usar eos_token como reemplazo
-                # pad_token se usa para rellenar secuencias cortas al mismo tamaño
-                if self.llm_tokenizer.pad_token is None:
-                    self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
+                    if self.llm_tokenizer.pad_token is None:
+                        self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
 
-                print("✅ LLM cargado exitosamente desde disco")
+                    print("✅ LLM cargado exitosamente desde disco local")
+                    loaded_from_disk = True
 
-            # CASO 2: Si NO existe localmente, descargar de Hugging Face
-            else:
-                print("⚠️  Modelo LLM no encontrado localmente")
+                except Exception as disk_error:
+                    print(f"⚠️  Error al cargar desde disco: {disk_error}")
+                    print("🔄 Intentando descargar modelo fresco desde Hugging Face...")
+                    loaded_from_disk = False
+
+            # Si no se cargó desde disco, descargar de Hugging Face
+            if not loaded_from_disk:
+                print("⚠️  Modelo LLM no encontrado localmente (o corrupto)")
                 print("🌐 Descargando Qwen2.5-1.5B-Instruct desde Hugging Face...")
                 print(f"📥 Esto puede tardar varios minutos (descarga ~3GB)...")
 
-                # ID del modelo en Hugging Face Hub
-                # Qwen2.5-1.5B-Instruct: Modelo optimizado para seguir instrucciones
-                # NO requiere autenticación (a diferencia de Llama)
-                model_id = "Qwen/Qwen2.5-1.5B-Instruct"
-
-                # Descargar y cargar el tokenizer desde Hugging Face
+                # Descargar tokenizer
                 print("📦 Descargando tokenizer...")
                 self.llm_tokenizer = AutoTokenizer.from_pretrained(
-                    model_id,       # Identificador del modelo en HF
-                    trust_remote_code=True  # Necesario para Qwen
+                    model_id,
+                    trust_remote_code=True
                 )
 
-                # Descargar y cargar el modelo completo desde Hugging Face
+                # Descargar modelo
                 print("📦 Descargando modelo (esto tomará varios minutos)...")
                 self.llm_model = AutoModelForCausalLM.from_pretrained(
-                    model_id,                    # Identificador del modelo
-                    torch_dtype=torch.float32,   # Tipo de datos para los pesos
-                    trust_remote_code=True,      # Necesario para Qwen
-                    cache_dir="./trained_model"  # Guardar en esta carpeta para reutilizar
+                    model_id,
+                    torch_dtype=torch.float32,
+                    trust_remote_code=True,
+                    cache_dir="./trained_model"
                 )
 
-                # Poner el modelo en modo evaluación (no entrenamiento)
                 self.llm_model.eval()
 
-                # Configurar pad_token si no existe
                 if self.llm_tokenizer.pad_token is None:
                     self.llm_tokenizer.pad_token = self.llm_tokenizer.eos_token
 
