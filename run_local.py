@@ -86,7 +86,7 @@ def main():
             "churn_chat_api:app",
             host="0.0.0.0",
             port=8000,
-            reload=True,  # Auto-reload en cambios de código
+            reload=False,  # Desactivado para evitar recargas por descarga del LLM
             log_level="info"
         )
     except KeyboardInterrupt:
