@@ -106,11 +106,18 @@ class ChurnChatSystem:
             print("⚠️  Modelo de churn no encontrado. Ejecuta train_churn_prediction.py primero")
         
         # ========================================================================
-        # 2. CARGAR MODELO LLM PARA CONVERSACIÓN (Llama 3.2)
+        # 2. CARGAR MODELO LLM PARA CONVERSACIÓN (Qwen2.5-1.5B-Instruct)
         # ========================================================================
+        # Qwen2.5 es un modelo open-source de Alibaba Cloud
+        # Ventajas vs Llama 3.2:
+        #   - NO requiere autenticación (descarga directa)
+        #   - Más ligero (~3GB vs ~4GB)
+        #   - Excelente soporte multilingüe (incluyendo español)
+        #   - Optimizado para seguir instrucciones
+        #   - Licencia Apache 2.0 (completamente open source)
         try:
             # Obtener el token de Hugging Face desde la variable de entorno
-            # Este token es necesario para acceder a modelos "gated" como Llama 3.2
+            # NOTA: Qwen2.5 NO requiere token, pero lo leemos por si usamos otros modelos
             hf_token = os.getenv("HUGGING_FACE_HUB_TOKEN")
 
             # Verificar si existe una carpeta con modelo ya descargado localmente
@@ -123,14 +130,14 @@ class ChurnChatSystem:
                 # Cargar el tokenizer (convierte texto a números que el modelo entiende)
                 self.llm_tokenizer = AutoTokenizer.from_pretrained(
                     llm_model_path,  # Ruta local del modelo
-                    token=hf_token   # Token por si necesita verificar licencia
+                    trust_remote_code=True  # Necesario para modelos de Qwen
                 )
 
                 # Cargar el modelo de lenguaje (LLM) para generar texto
                 self.llm_model = AutoModelForCausalLM.from_pretrained(
                     llm_model_path,          # Ruta local del modelo
-                    torch_dtype=torch.float32,  # Usar float32 para compatibilidad (más lento pero más preciso)
-                    token=hf_token           # Token de autenticación
+                    torch_dtype=torch.float32,  # Usar float32 para compatibilidad
+                    trust_remote_code=True   # Necesario para modelos de Qwen
                 )
 
                 # Poner el modelo en modo evaluación (desactiva dropout, etc.)
@@ -146,17 +153,19 @@ class ChurnChatSystem:
             # CASO 2: Si NO existe localmente, descargar de Hugging Face
             else:
                 print("⚠️  Modelo LLM no encontrado localmente")
-                print("🌐 Descargando Llama 3.2 desde Hugging Face...")
-                print(f"📥 Esto puede tardar varios minutos (descarga ~4GB)...")
+                print("🌐 Descargando Qwen2.5-1.5B-Instruct desde Hugging Face...")
+                print(f"📥 Esto puede tardar varios minutos (descarga ~3GB)...")
 
                 # ID del modelo en Hugging Face Hub
-                model_id = "meta-llama/Llama-3.2-1B-Instruct"
+                # Qwen2.5-1.5B-Instruct: Modelo optimizado para seguir instrucciones
+                # NO requiere autenticación (a diferencia de Llama)
+                model_id = "Qwen/Qwen2.5-1.5B-Instruct"
 
                 # Descargar y cargar el tokenizer desde Hugging Face
                 print("📦 Descargando tokenizer...")
                 self.llm_tokenizer = AutoTokenizer.from_pretrained(
                     model_id,       # Identificador del modelo en HF
-                    token=hf_token  # Token NECESARIO para modelos gated de Meta
+                    trust_remote_code=True  # Necesario para Qwen
                 )
 
                 # Descargar y cargar el modelo completo desde Hugging Face
@@ -164,7 +173,7 @@ class ChurnChatSystem:
                 self.llm_model = AutoModelForCausalLM.from_pretrained(
                     model_id,                    # Identificador del modelo
                     torch_dtype=torch.float32,   # Tipo de datos para los pesos
-                    token=hf_token,              # Token REQUERIDO para Llama
+                    trust_remote_code=True,      # Necesario para Qwen
                     cache_dir="./trained_model"  # Guardar en esta carpeta para reutilizar
                 )
 
@@ -182,10 +191,9 @@ class ChurnChatSystem:
         except Exception as e:
             print(f"❌ Error al cargar LLM: {e}")
             print("⚠️  Posibles causas:")
-            print("   - Token de Hugging Face inválido o expirado")
-            print("   - No aceptaste los términos de Llama 3.2 en Hugging Face")
             print("   - Sin conexión a internet para descargar el modelo")
-            print("   - Memoria insuficiente (Llama 3.2 requiere ~4GB RAM)")
+            print("   - Memoria insuficiente (Qwen2.5 requiere ~4GB RAM)")
+            print("   - Problemas con trust_remote_code (necesario para Qwen)")
             print("⚠️  La API funcionará con respuestas estructuradas (sin LLM)")
 
             # Configurar a None para que el sistema use respuestas estructuradas
