@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException  # Framework web para crear la API REST
+from fastapi.responses import FileResponse  # Servir archivos HTML estáticos
 from fastapi.middleware.cors import CORSMiddleware  # Middleware para permitir peticiones desde otros dominios
 from pydantic import BaseModel  # Validación de datos con tipos
 from typing import List, Optional, Dict, Any  # Tipos de datos para type hints
@@ -726,7 +727,12 @@ async def startup_event():
 
 @app.get("/")
 async def root():
-    """Endpoint raíz"""
+    """Sirve la interfaz web del chat"""
+    return FileResponse("chat_interface.html")
+
+@app.get("/api")
+async def api_info():
+    """Información de la API"""
     return {
         "message": "API de Predicción de Churn con Chat en Lenguaje Natural",
         "version": "1.0.0",
