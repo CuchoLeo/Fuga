@@ -48,7 +48,7 @@ venv.bak/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
-*.ipynb
+# *.ipynb  # Comentado para permitir Churnito_Colab.ipynb
 
 # Logs
 *.log
