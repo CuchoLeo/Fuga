@@ -59,6 +59,7 @@ Para entender las decisiones técnicas detrás del sistema:
 - 📖 **[DOCUMENTACION_CODIGO.md](DOCUMENTACION_CODIGO.md)** - Código explicado línea por línea
 - 🤖 **[DOCUMENTACION_MODELOS.md](DOCUMENTACION_MODELOS.md)** - Todos los modelos comparados y decisiones técnicas
 - 💻 **[README_LOCAL.md](README_LOCAL.md)** - Guía de ejecución local sin Docker
+- ☁️ **[DESPLIEGUE_GCP.md](DESPLIEGUE_GCP.md)** - Despliegue en Google Cloud Platform (Cloud Run, Compute Engine)
 - 📓 **[Churnito_Colab.ipynb](Churnito_Colab.ipynb)** - Notebook completo para Google Colab
 
 ---
