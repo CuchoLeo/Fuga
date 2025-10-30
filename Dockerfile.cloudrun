@@ -1,0 +1,41 @@
+# Dockerfile optimizado para Google Cloud Run
+# Cloud Run requiere que la aplicación escuche en el puerto $PORT
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar e instalar dependencias Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar archivos de la aplicación
+COPY *.py ./
+COPY Churn_Modelling.csv ./
+COPY chat_interface.html ./
+
+# Crear usuario no-root (Cloud Run best practice)
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Cloud Run asigna PORT dinámicamente
+# Por defecto usamos 8080 si no está definido
+ENV PORT=8080
+
+# Exponer puerto
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:$PORT/health || exit 1
+
+# Comando de inicio
+# Cloud Run requiere que la app escuche en $PORT
+CMD uvicorn churn_chat_api:app --host 0.0.0.0 --port $PORT --workers 1
