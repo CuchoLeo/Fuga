@@ -60,6 +60,7 @@ Para entender las decisiones técnicas detrás del sistema:
 - 🤖 **[DOCUMENTACION_MODELOS.md](DOCUMENTACION_MODELOS.md)** - Todos los modelos comparados y decisiones técnicas
 - 💻 **[README_LOCAL.md](README_LOCAL.md)** - Guía de ejecución local sin Docker
 - ☁️ **[DESPLIEGUE_GCP.md](DESPLIEGUE_GCP.md)** - Despliegue en Google Cloud Platform (Cloud Run, Compute Engine)
+- 💰 **[DESPLIEGUE_LOW_COST.md](DESPLIEGUE_LOW_COST.md)** - Despliegue GRATIS o bajo costo (<$5/mes) - Oracle Cloud, GCP Free Tier, Railway
 - 📓 **[Churnito_Colab.ipynb](Churnito_Colab.ipynb)** - Notebook completo para Google Colab
 
 ---
