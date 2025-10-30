@@ -52,6 +52,17 @@ open http://localhost:8000/docs
 Sistema de IA que predice qué clientes están en riesgo de abandonar, con chat en lenguaje natural para consultas y análisis.
 ---
 
+## 📚 Documentación Técnica
+
+Para entender las decisiones técnicas detrás del sistema:
+
+- 📖 **[DOCUMENTACION_CODIGO.md](DOCUMENTACION_CODIGO.md)** - Código explicado línea por línea
+- 🤖 **[DOCUMENTACION_MODELOS.md](DOCUMENTACION_MODELOS.md)** - Todos los modelos comparados y decisiones técnicas
+- 💻 **[README_LOCAL.md](README_LOCAL.md)** - Guía de ejecución local sin Docker
+- 📓 **[Churnito_Colab.ipynb](Churnito_Colab.ipynb)** - Notebook completo para Google Colab
+
+---
+
 ## 🏗️ Arquitectura del Sistema
 
 ```
@@ -61,7 +72,7 @@ Sistema de IA que predice qué clientes están en riesgo de abandonar, con chat 
 │                                                               │
 │  ┌──────────────────┐      ┌──────────────────┐            │
 │  │  Modelo LLM      │      │  Modelo Churn    │            │
-│  │  (Llama 3.2)     │◄────►│  (DistilBERT)    │            │
+│  │  (Qwen2.5 1.5B)  │◄────►│  (DistilBERT)    │            │
 │  │  Conversación    │      │  Clasificación   │            │
 │  └──────────────────┘      └──────────────────┘            │
 │           │                         │                        │
@@ -173,13 +184,11 @@ python train_churn_prediction.py
 
 **Tiempo estimado:** 5-15 minutos (CPU), 2-5 minutos (GPU)
 
-### Paso 3: Entrenar el Modelo LLM (Opcional)
+### Paso 3: Descarga Automática del Modelo LLM
 
-```bash
-python train.py
-```
+El modelo LLM (Qwen2.5-1.5B-Instruct) se descarga automáticamente al iniciar la API por primera vez. No necesitas entrenarlo.
 
-Si no ejecutas este paso, la API usará el modelo base de Llama 3.2.
+**Nota:** La primera vez tomará ~5-10 minutos descargando el modelo (~3GB).
 
 ### Paso 4: Iniciar la API
 
@@ -680,7 +689,8 @@ Para contribuir al proyecto:
 - **Dataset**: [Bank Customer Churn Dataset](https://www.kaggle.com/datasets/shrutimechlearn/churn-modelling)
 - **Transformers**: [Hugging Face Documentation](https://huggingface.co/docs/transformers)
 - **FastAPI**: [FastAPI Documentation](https://fastapi.tiangolo.com)
-- **Llama 3.2**: [Meta AI Llama Models](https://ai.meta.com/llama/)
+- **Qwen2.5**: [Qwen2.5-1.5B-Instruct Model](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct)
+- **DistilBERT**: [DistilBERT Documentation](https://huggingface.co/distilbert-base-uncased)
 
 ---
 
