@@ -45,6 +45,7 @@ venv.bak/
 *.swo
 *~
 .DS_Store
+*.code-workspace
 
 # Jupyter Notebook
 .ipynb_checkpoints/
@@ -58,8 +59,12 @@ logs/
 # Comentar estas líneas si quieres subir los modelos a git
 # trained_model/
 # churn_model/
+checkpoint_churn/
 
 # Datos temporales
 *.tmp
 *.bak
 *.cache
+
+# Configuración local de GitHub
+.github/
