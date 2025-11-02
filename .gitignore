@@ -57,9 +57,14 @@ logs/
 
 # Modelos entrenados (pueden ser muy grandes)
 # Comentar estas líneas si quieres subir los modelos a git
-# trained_model/
-# churn_model/
+trained_model/
+churn_model/
+churn_checkpoint/
 checkpoint_churn/
+*.zip
+
+# Resultados de pruebas (regenerables)
+test_results/
 
 # Datos temporales
 *.tmp
