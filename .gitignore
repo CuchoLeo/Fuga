@@ -73,3 +73,11 @@ test_results/
 
 # Configuración local de GitHub
 .github/
+
+# Documentos finales (mantener solo en local)
+INFORME_FINAL.md
+INFORME_FINAL.html
+ARTICULO_REVISTA.md
+ARTICULO_REVISTA.html
+generate_html_report.py
+generate_article_html.py
