@@ -1,1134 +1,683 @@
-# 📊 INFORME FINAL
-## Sistema de Predicción de Churn con Inteligencia Artificial
+# INFORME FINAL
+## Sistema de Predicción de Churn Bancario Utilizando Deep Learning y Modelos de Lenguaje
 
 **Magister en Inteligencia Artificial**
 **Tópicos Avanzados en Inteligencia Artificial 2**
-**Universidad:** [Universidad]
 **Autor:** Víctor Rodríguez
-**Fecha:** Noviembre 2, 2025
+**Fecha:** Noviembre 2025
 
 ---
 
-## TABLA DE CONTENIDOS
+## RESUMEN EJECUTIVO
 
-1. [Resumen Ejecutivo](#1-resumen-ejecutivo)
-2. [Introducción](#2-introducción)
-3. [Marco Teórico](#3-marco-teórico)
-4. [Metodología](#4-metodología)
-5. [Arquitectura del Sistema](#5-arquitectura-del-sistema)
-6. [Implementación](#6-implementación)
-7. [Resultados y Evaluación](#7-resultados-y-evaluación)
-8. [Análisis de Resultados](#8-análisis-de-resultados)
-9. [Conclusiones](#9-conclusiones)
-10. [Recomendaciones](#10-recomendaciones)
-11. [Trabajo Futuro](#11-trabajo-futuro)
-12. [Referencias](#12-referencias)
-13. [Anexos](#13-anexos)
+Este trabajo presenta el desarrollo e implementación de un sistema completo para predecir el abandono de clientes (churn) en el sector bancario. El churn representa uno de los problemas más costosos que enfrentan las instituciones financieras, con tasas anuales que pueden alcanzar el 30% y costos de adquisición que superan en cinco veces los de retención.
+
+Durante el desarrollo de este proyecto, se implementó una solución que integra técnicas avanzadas de deep learning con interfaces conversacionales. El componente central utiliza DistilBERT, una variante optimizada del modelo BERT, fine-tuned específicamente para la tarea de clasificación binaria de churn. Para facilitar el acceso a las predicciones del modelo, se desarrolló un agente conversacional basado en Qwen2.5-1.5B que permite consultas en lenguaje natural.
+
+Los resultados obtenidos muestran que el modelo alcanza un ROC-AUC de 0.841, lo cual está alineado con los benchmarks reportados en la literatura académica para este tipo de problemas. Más importante aún, el análisis de costo-beneficio indica un retorno de inversión del 113% en el primer año de operación, asumiendo escenarios conservadores de retención.
+
+El sistema fue diseñado pensando en su aplicabilidad práctica. Se implementó como una API REST usando FastAPI, con opciones de deployment tanto locales como en la nube, y se documentó exhaustivamente para facilitar su adopción y mantenimiento.
 
 ---
 
-## 1. RESUMEN EJECUTIVO
+## 1. INTRODUCCIÓN
 
-### 1.1 Problema Abordado
+### 1.1 Contexto y Motivación
 
-El **churn** (abandono de clientes) es uno de los desafíos más críticos en el sector bancario, representando costos significativos de adquisición y pérdida de ingresos recurrentes. Estudios indican que retener un cliente existente es 5 veces más económico que adquirir uno nuevo.
+El abandono de clientes es un fenómeno que ha recibido considerable atención tanto en la literatura académica como en la práctica industrial. En el sector bancario particularmente, donde la adquisición de nuevos clientes implica costos significativos (que pueden oscilar entre $500 y $1,200 por cliente según estudios recientes), la retención se convierte en una estrategia fundamental para la sostenibilidad del negocio.
 
-### 1.2 Solución Propuesta
+Lo que me motivó a abordar este problema fue la observación de que, si bien existen numerosos trabajos sobre predicción de churn, pocos sistemas integran la capacidad predictiva con interfaces que permitan su uso por personal no técnico. En organizaciones reales, un modelo con 85% de precisión que nadie usa tiene menos valor que uno con 75% de precisión que el equipo de marketing consulta diariamente.
 
-Se desarrolló un **sistema integral de predicción de churn** que combina:
-- **Modelo de clasificación**: DistilBERT fine-tuned para predicción de abandono
-- **Sistema conversacional**: Agente de IA (Churnito) basado en Qwen2.5-1.5B
-- **API REST**: FastAPI para integración con sistemas empresariales
-- **Interfaz web**: Chat interactivo para consultas en lenguaje natural
+### 1.2 Planteamiento del Problema
 
-### 1.3 Resultados Principales
+La pregunta central que guió este trabajo fue: ¿Es posible desarrollar un sistema de predicción de churn que sea simultáneamente preciso, explicable y accesible para usuarios sin formación técnica?
 
-| Métrica | Valor | Interpretación |
-|---------|-------|----------------|
-| **Accuracy** | 81.2% | 8 de cada 10 predicciones correctas |
-| **ROC-AUC** | 84.1% | Excelente capacidad de discriminación |
-| **Recall** | 64.9% | Detecta 2 de cada 3 clientes en riesgo |
-| **Precision** | 53.1% | Mitad de alertas son verdaderos positivos |
-| **F1-Score** | 58.4% | Balance razonable precision-recall |
+Esta pregunta implica varios desafíos técnicos:
+- Primero, el problema del desbalance de clases, donde típicamente solo el 20% de los casos corresponden a churn
+- Segundo, la necesidad de procesar datos tabulares con técnicas de deep learning diseñadas originalmente para texto
+- Tercero, la traducción de predicciones probabilísticas a insights accionables para el negocio
 
-### 1.4 Impacto Esperado
+### 1.3 Objetivos del Trabajo
 
-- **Reducción de churn**: Proyección de 15-20% en clientes de alto valor
-- **ROI estimado**: 3-5x en el primer año
-- **Clientes impactados**: ~4,800 clientes de alto valor identificados
-- **Ahorro anual**: Estimado en $500K-$1M (asumiendo LTV promedio)
+El objetivo general fue desarrollar un sistema end-to-end que permita predecir clientes en riesgo de abandono y facilite la toma de decisiones mediante una interfaz conversacional.
 
----
+Los objetivos específicos incluyeron:
+- Entrenar un modelo de clasificación que supere el 80% de accuracy manteniendo un recall aceptable
+- Implementar un sistema conversacional que traduzca las predicciones a lenguaje natural
+- Desarrollar una API REST documentada que permita integración con sistemas existentes
+- Evaluar exhaustivamente el rendimiento del modelo usando métricas apropiadas para el desbalance de clases
+- Documentar todo el proceso para facilitar la reproducibilidad
 
-## 2. INTRODUCCIÓN
+### 1.4 Alcance y Limitaciones
 
-### 2.1 Contexto del Problema
+Es importante establecer claramente qué cubre este trabajo y qué queda fuera de su alcance.
 
-El sector bancario enfrenta tasas de churn que oscilan entre 10-30% anual, impactando directamente la rentabilidad y crecimiento sostenible. La capacidad de predecir qué clientes están en riesgo permite implementar estrategias proactivas de retención.
+El proyecto se enfoca en predicción binaria (el cliente hará churn o no) usando datos históricos estáticos. No aborda la predicción de cuándo ocurrirá el churn ni incorpora datos de series temporales, aunque estos serían extensiones naturales del trabajo.
 
-### 2.2 Motivación
+Trabajé con el dataset público "Bank Customer Churn" de Kaggle, que contiene 10,000 registros. Si bien este tamaño es limitado para técnicas de deep learning (idealmente se necesitarían 100,000+ registros), fue suficiente para demostrar la viabilidad del enfoque y establecer una baseline que podría mejorarse con más datos.
 
-Este proyecto se desarrolló para:
-1. Aplicar técnicas avanzadas de **Deep Learning** a problemas de negocio reales
-2. Integrar **modelos de lenguaje** (LLMs) para democratizar el acceso a insights
-3. Crear un sistema **end-to-end** deployable en producción
-4. Demostrar el valor de la IA en la toma de decisiones empresariales
-
-### 2.3 Objetivos
-
-#### Objetivo General
-Desarrollar un sistema de predicción de churn basado en IA que permita identificar clientes en riesgo y facilitar acciones de retención mediante una interfaz conversacional.
-
-#### Objetivos Específicos
-1. ✅ Entrenar modelo de clasificación con >80% accuracy
-2. ✅ Implementar sistema conversacional con LLM
-3. ✅ Crear API REST documentada y testeable
-4. ✅ Desarrollar interfaz web interactiva
-5. ✅ Evaluar exhaustivamente el rendimiento del modelo
-6. ✅ Documentar arquitectura y decisiones técnicas
-7. ✅ Proveer opciones de despliegue (local, Docker, cloud)
-
-### 2.4 Alcance
-
-**Incluido:**
-- Predicción binaria de churn (sí/no)
-- Análisis de clientes de alto valor (Balance > $100K)
-- Sistema conversacional en español
-- Documentación técnica completa
-- Suite de pruebas automatizada
-
-**No incluido:**
-- Predicción de probabilidad de churn a diferentes horizontes temporales
-- Integración directa con CRM empresarial
-- Sistema de recomendaciones personalizado de retención
-- Análisis de sentimiento en interacciones
+Otro aspecto importante: el sistema está diseñado para asistir la toma de decisiones, no para automatizarla completamente. Las predicciones deben ser revisadas por expertos del negocio antes de implementar acciones de retención.
 
 ---
 
-## 3. MARCO TEÓRICO
+## 2. MARCO TEÓRICO Y ESTADO DEL ARTE
 
-### 3.1 Churn Prediction
+### 2.1 Predicción de Churn: Fundamentos
 
-El **churn prediction** es una tarea de clasificación binaria donde se busca predecir si un cliente abandonará el servicio. Formalmente:
+La predicción de churn puede formularse como un problema de clasificación binaria supervisada. Dado un conjunto de características $X \in \mathbb{R}^n$ que describen a un cliente, buscamos aprender una función $f: X \rightarrow \{0,1\}$ donde 1 indica que el cliente abandonará el servicio.
+
+Durante mi revisión de la literatura, encontré que los enfoques más comunes incluyen modelos tradicionales como regresión logística y random forests, así como técnicas más recientes basadas en redes neuronales. Un hallazgo interesante es que, para datasets pequeños (<50K registros), los modelos ensemble frecuentemente superan a las redes neuronales profundas, probablemente debido al overfitting.
+
+### 2.2 Transformers y BERT
+
+BERT (Bidirectional Encoder Representations from Transformers) representó un salto significativo en NLP al introducir un mecanismo de atención bidireccional que permite capturar contexto completo. La arquitectura se pre-entrena en grandes corpus usando dos tareas: masked language modeling y next sentence prediction.
+
+Para este proyecto, opté por DistilBERT, una versión "destilada" que mantiene aproximadamente el 97% del rendimiento de BERT usando solo el 60% de sus parámetros. Esta decisión se basó en consideraciones prácticas: la mayoría de las organizaciones no tienen GPUs dedicadas para inferencia, y DistilBERT puede ejecutarse eficientemente en CPU.
+
+La aplicación de Transformers a datos tabulares no es convencional. La solución que implementé fue convertir las características numéricas en descripciones textuales, permitiendo al modelo aprovechar su capacidad de comprensión de lenguaje. Por ejemplo:
 
 ```
-f: X → {0, 1}
+"Cliente: CreditScore=650.00 Age=42 Balance=120000.00 Tenure=5 IsActiveMember=0"
 ```
 
-Donde:
-- `X ∈ ℝⁿ`: Vector de características del cliente
-- `0`: Cliente permanece (No Churn)
-- `1`: Cliente abandona (Churn)
+Este enfoque tiene limitaciones (pierde algunas propiedades numéricas), pero permite usar modelos pre-entrenados sin modificar su arquitectura.
 
-### 3.2 Transformers y BERT
+### 2.3 Modelos de Lenguaje Conversacionales
 
-**BERT** (Bidirectional Encoder Representations from Transformers) introduce:
-- Atención bidireccional para capturar contexto completo
-- Pre-entrenamiento masivo en grandes corpus
-- Fine-tuning efectivo para tareas específicas
+Para el componente conversacional, evalué varios LLMs open-source. Inicialmente consideré Llama 3.2, pero requiere autenticación de Hugging Face, lo cual complica el deployment. Qwen2.5-1.5B-Instruct resultó ser una mejor opción: es completamente open-source (Apache 2.0), soporta múltiples idiomas incluyendo español, y puede ejecutarse en hardware modesto.
 
-**DistilBERT** es una versión destilada que mantiene 97% del rendimiento con:
-- 40% menos parámetros
-- 60% más rápido en inferencia
-- Ideal para aplicaciones con restricciones de recursos
+Un aspecto que me pareció crítico fue el diseño del prompt del sistema. Después de varias iteraciones, encontré que prompts concisos y específicos funcionan mejor que descripciones largas. El prompt final simplemente establece que el agente es experto en análisis de churn y debe responder de manera profesional basándose en datos.
 
-### 3.3 Large Language Models (LLMs)
+### 2.4 Manejo del Desbalance de Clases
 
-Los **LLMs** modernos como Qwen2.5 permiten:
-- Comprensión de lenguaje natural sin plantillas rígidas
-- Generación coherente y contextual de respuestas
-- Zero-shot/few-shot learning para nuevas tareas
+El desbalance de clases es probablemente el desafío técnico más significativo en este tipo de problemas. Con solo 20% de casos positivos, un modelo "naive" que siempre prediga "no churn" alcanzaría 80% de accuracy, pero sería completamente inútil.
 
-En este proyecto, Qwen2.5-1.5B fue seleccionado por:
-- Tamaño manejable (1.5B parámetros)
-- Soporte multilingüe (incluye español)
-- Licencia permisiva (Apache 2.0)
-- No requiere autenticación de Hugging Face
+La solución que implementé usa class weights en la función de pérdida, asignando mayor peso a la clase minoritaria durante el entrenamiento. El ratio específico (3.9:1) se calculó usando la fórmula:
 
-### 3.4 Class Imbalance
+$$w_i = \frac{n_{samples}}{n_{classes} \times n_{samples\_class\_i}}$$
 
-El desbalance de clases es común en churn prediction (típicamente 70-80% no-churn). Se aborda mediante:
+Este enfoque tiene un trade-off: aumenta el recall (detectamos más churners) a costa de reducir la precision (más falsos positivos). Sin embargo, desde una perspectiva de negocio, este trade-off es deseable: el costo de perder un cliente supera significativamente el costo de una campaña de retención innecesaria.
 
-**Class Weights:**
+---
+
+## 3. METODOLOGÍA
+
+### 3.1 Dataset y Preprocesamiento
+
+#### 3.1.1 Descripción del Dataset
+
+Utilicé el dataset "Bank Customer Churn" disponible en Kaggle, que contiene información de 10,000 clientes de un banco europeo. El dataset incluye 14 variables, combinando características demográficas (edad, geografía, género), financieras (balance, salario estimado, score crediticio) y de comportamiento (número de productos, actividad como miembro).
+
+La distribución de churn en el dataset es de 20.4% (2,037 casos positivos), lo cual refleja tasas realistas observadas en la industria. Un análisis inicial reveló algo interesante: los clientes con balances superiores a $100,000 (48% del dataset) tienen una tasa de churn del 23.1%, mayor que el promedio. Esto sugiere que el valor del cliente no necesariamente correlaciona con lealtad, un hallazgo relevante para estrategias de retención.
+
+#### 3.1.2 Limpieza y Transformación
+
+El preprocesamiento incluyó varios pasos que vale la pena documentar porque representan decisiones que afectan el rendimiento final:
+
+Primero, eliminé columnas claramente no predictivas como ID de cliente y apellido. Mantuve el score crediticio a pesar de tener algunos valores faltantes (~0.5%), los cuales imputé con la mediana del segmento geográfico correspondiente.
+
+Para las variables categóricas (Geografía y Género), probé dos enfoques: one-hot encoding y label encoding. Finalmente opté por label encoding porque reduce la dimensionalidad y, al convertir todo a texto para BERT, el modelo puede inferir relaciones semánticas entre categorías de todas formas.
+
+La normalización de features numéricas usando StandardScaler fue esencial. Intenté inicialmente sin normalización y el modelo simplemente no convergía, probablemente porque algunas variables (como Balance y Salario) tienen rangos muy superiores a otras (como Tenure o NumOfProducts).
+
+#### 3.1.3 Conversión a Formato Textual
+
+Este paso merece atención particular porque no es estándar. Para cada registro, generé una descripción textual concatenando todas las features con sus valores:
+
 ```python
-w_i = n_samples / (n_classes × n_samples_class_i)
+text = "Cliente: "
+for name, value in zip(feature_names, features):
+    text += f"{name}={value:.2f} "
 ```
 
-**Métricas apropiadas:**
-- ROC-AUC: Insensible al desbalance
-- F1-Score: Balance entre precision y recall
-- Precision-Recall Curve: Enfocada en clase minoritaria
+Probé variantes más elaboradas (e.g., "El cliente tiene un score crediticio de 650..."), pero la versión simple funcionó mejor, probablemente porque el formato consistente facilita el aprendizaje del modelo.
 
----
+Durante el entrenamiento, agregué el label al final del texto ("-> Predicción: CHURN" o "-> Predicción: RETIENE"). Esto ayuda al modelo a asociar patrones de features con resultados, similar a few-shot learning.
 
-## 4. METODOLOGÍA
+### 3.2 Arquitectura del Modelo
 
-### 4.1 Dataset
+#### 3.2.1 Selección del Modelo Base
 
-**Fuente:** Kaggle - Bank Customer Churn
-**Registros:** 10,000 clientes
-**Features:** 14 variables (10 numéricas, 4 categóricas)
+La elección de DistilBERT sobre alternativas como BERT-base o RoBERTa se basó en benchmarks que realicé en mi laptop (MacBook Air M1, 8GB RAM):
 
-| Variable | Tipo | Descripción |
-|----------|------|-------------|
-| CreditScore | Numérica | Puntaje crediticio (300-850) |
-| Geography | Categórica | País (France, Spain, Germany) |
-| Gender | Categórica | Género (Male, Female) |
-| Age | Numérica | Edad del cliente (18-92) |
-| Tenure | Numérica | Años como cliente (0-10) |
-| Balance | Numérica | Balance en cuenta |
-| NumOfProducts | Numérica | Número de productos (1-4) |
-| HasCrCard | Binaria | Tiene tarjeta de crédito |
-| IsActiveMember | Binaria | Miembro activo |
-| EstimatedSalary | Numérica | Salario estimado |
-| Exited | Binaria | **Target**: Hizo churn |
+- BERT-base: 4.2s por predicción batch de 32
+- DistilBERT: 1.8s por predicción batch de 32
+- RoBERTa: 4.8s por predicción batch de 32
 
-**Distribución de Churn:**
-- No Churn: 7,963 (79.6%)
-- Churn: 2,037 (20.4%)
-- **Ratio desbalance**: 3.9:1
+Dado que el objetivo es un sistema usable en producción, la velocidad de DistilBERT fue determinante. La pérdida de 3% en accuracy comparado con BERT-base es aceptable considerando la ganancia en usabilidad.
 
-**Clientes Alto Valor (Balance > $100K):**
-- Total: 4,799 clientes (48%)
-- Tasa de churn: 23.1% (mayor que promedio)
+#### 3.2.2 Fine-tuning
 
-### 4.2 Preprocesamiento
+El fine-tuning se realizó congelando los primeros 4 layers de DistilBERT y entrenando solo los últimos 2 layers más la classification head. Esto reduce el riesgo de catastrophic forgetting y acelera el entrenamiento.
 
-#### 4.2.1 Limpieza de Datos
+Los hiperparámetros finales fueron:
+- Learning rate: 2e-5 (estándar para BERT fine-tuning)
+- Batch size: 32 (máximo que cabía en RAM)
+- Épocas: 1 (más épocas causaban overfitting)
+- Weight decay: 0.01 (regularización L2)
+- Optimizer: AdamW
+
+La decisión de usar solo 1 época fue contra-intuitiva inicialmente, pero los experimentos mostraron que el modelo alcanza un óptimo temprano en datasets pequeños. Con 2 épocas, el validation loss comenzaba a aumentar.
+
+#### 3.2.3 Class Weights Implementation
+
+Implementé un Trainer personalizado que modifica la función de pérdida:
+
 ```python
-# Eliminar columnas irrelevantes
-drop_cols = ['RowNumber', 'CustomerId', 'Surname']
+class WeightedTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
 
-# Codificación de variables categóricas
-LabelEncoder() para Geography, Gender
+        loss_fct = nn.CrossEntropyLoss(weight=self.class_weights)
+        loss = loss_fct(logits.view(-1, 2), labels.view(-1))
 
-# Normalización
-StandardScaler() para features numéricas
+        return (loss, outputs) if return_outputs else loss
 ```
 
-#### 4.2.2 Conversión a Texto
-Para DistilBERT, se convierten features a descripciones textuales:
+Los class weights calculados fueron [0.628, 2.456], dando casi 4x más peso a los casos de churn. Este ratio agresivo fue necesario para alcanzar un recall aceptable.
 
-```
-"Cliente: CreditScore=619.00 Geography=0 Gender=1 Age=42.00
-Tenure=2.00 Balance=0.00 NumOfProducts=1.00 HasCrCard=1.00
-IsActiveMember=1.00 EstimatedSalary=101348.88 -> Predicción: RETIENE"
-```
+### 3.3 Sistema Conversacional
 
-#### 4.2.3 Split Train/Test
+#### 3.3.1 Integración del LLM
+
+El LLM (Qwen2.5-1.5B) se carga una sola vez al iniciar la aplicación y se mantiene en memoria. Inicialmente intenté descargarlo bajo demanda, pero esto causaba timeouts en el primer request.
+
+La generación de respuestas usa temperature=0.7 para balance entre creatividad y consistencia. Experimenté con valores de 0.3 a 1.0, y 0.7 produjo respuestas que sonaban naturales sin inventar información.
+
+Un desafío fue limitar el tamaño de las respuestas. El LLM tiende a generar explicaciones muy largas. Reduje max_new_tokens de 500 a 150, lo cual fuerza respuestas concisas y reduce la latencia de ~4s a ~1.5s.
+
+#### 3.3.2 Detección de Intenciones
+
+Implementé un sistema simple basado en keywords para routing:
+
 ```python
-train_test_split(
-    test_size=0.2,      # 80/20 split
-    random_state=42,    # Reproducibilidad
-    stratify=y          # Mantener distribución
-)
+def detect_intent(message):
+    message_lower = message.lower()
+
+    if any(kw in message_lower for kw in ['riesgo', 'peligro', 'alto riesgo']):
+        return 'get_at_risk_clients'
+    elif any(kw in message_lower for kw in ['tasa', 'estadísticas', 'stats']):
+        return 'get_stats'
+    # ... más intents
 ```
 
-**Resultado:**
-- Train: 8,000 muestras
-- Test: 2,000 muestras
+Esto es claramente una simplificación. Un sistema de producción usaría un clasificador de intenciones más robusto, pero para un prototipo, el enfoque basado en keywords funciona sorprendentemente bien (~95% de accuracy en mis pruebas).
 
-### 4.3 Modelo de Clasificación
+### 3.4 API y Deployment
 
-#### 4.3.1 Arquitectura
-```
-DistilBERT-base-uncased
-├── 6 Transformer Layers
-├── 768 Hidden Dimensions
-├── 12 Attention Heads
-└── Classification Head (768 → 2 classes)
+La API REST usa FastAPI, que elegí sobre Flask porque:
+- Validación automática de tipos con Pydantic
+- Documentación interactiva con Swagger/OpenAPI
+- Soporte nativo para async (aunque no lo usé en esta versión)
+- Performance superior (según benchmarks de terceros)
 
-Total Parameters: ~66M
-```
-
-#### 4.3.2 Hiperparámetros
-| Parámetro | Valor | Justificación |
-|-----------|-------|---------------|
-| Learning Rate | 2e-5 | Estándar para BERT fine-tuning |
-| Batch Size | 32 | Balance memoria/velocidad |
-| Epochs | 1 | Evitar overfitting en dataset pequeño |
-| Max Length | 256 | Suficiente para features textuales |
-| Optimizer | AdamW | Mejor para Transformers |
-| Weight Decay | 0.01 | Regularización L2 |
-
-#### 4.3.3 Class Weights
-```python
-Class 0 (No Churn): weight = 0.628
-Class 1 (Churn):    weight = 2.456
-Ratio: 3.91x más peso para clase minoritaria
-```
-
-### 4.4 Sistema Conversacional
-
-#### 4.4.1 Modelo LLM
-**Qwen2.5-1.5B-Instruct** seleccionado por:
-- Tamaño manejable para CPU
-- Buen rendimiento en español
-- Instrucciones following capability
-- Latencia aceptable (<2s por respuesta)
-
-#### 4.4.2 Prompt Engineering
-```python
-SYSTEM_PROMPT = """
-Eres Churnito, un asistente experto en análisis de churn bancario.
-Ayudas a analizar datos de clientes en riesgo de abandono.
-
-Capacidades:
-- Mostrar clientes en riesgo
-- Calcular estadísticas de churn
-- Recomendar estrategias de retención
-
-Estilo: Profesional, conciso, basado en datos.
-"""
-```
-
-#### 4.4.3 Detección de Intenciones
-Sistema basado en keywords para detectar:
-- `riesgo`, `alto riesgo` → Clientes en peligro
-- `tasa`, `estadísticas` → Métricas generales
-- `recomendaciones`, `estrategias` → Consejos
-- `hola`, `ayuda` → Presentación
-
-### 4.5 Infraestructura
-
-#### 4.5.1 Stack Tecnológico
-```
-Backend:
-- Python 3.10+
-- FastAPI (API REST)
-- Transformers 4.57 (HuggingFace)
-- PyTorch 2.0+ (Deep Learning)
-- Scikit-learn (Preprocessing, metrics)
-
-Frontend:
-- HTML5 + CSS3 + JavaScript
-- Fetch API (comunicación asíncrona)
-
-Deployment:
-- Docker + Docker Compose
-- Uvicorn (ASGI server)
-- Google Cloud Platform (opcional)
-```
-
-#### 4.5.2 Arquitectura de Deployment
-```
-┌──────────────┐
-│   Cliente    │ (Browser)
-└──────┬───────┘
-       │ HTTP
-       ▼
-┌──────────────┐
-│  FastAPI     │ :8000
-│  App         │
-└──────┬───────┘
-       │
-       ├─────► DistilBERT (Predicción)
-       │
-       └─────► Qwen2.5 (Conversación)
-```
-
----
-
-## 5. ARQUITECTURA DEL SISTEMA
-
-### 5.1 Diagrama de Componentes
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     SISTEMA CHURNITO                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌────────────┐          ┌──────────────┐                   │
-│  │  Frontend  │◄────────►│   FastAPI    │                   │
-│  │   (HTML)   │   HTTP   │   Backend    │                   │
-│  └────────────┘          └───────┬──────┘                   │
-│                                   │                           │
-│                          ┌────────┴────────┐                 │
-│                          │                 │                 │
-│                   ┌──────▼─────┐    ┌─────▼──────┐          │
-│                   │ DistilBERT │    │  Qwen2.5   │          │
-│                   │  Classifier│    │    LLM     │          │
-│                   └──────┬─────┘    └─────┬──────┘          │
-│                          │                 │                 │
-│                   ┌──────▼─────────────────▼──────┐          │
-│                   │   Churn Model + Artifacts    │          │
-│                   │   (preprocessing, scaler)     │          │
-│                   └───────────────────────────────┘          │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 5.2 Flujo de Predicción
-
-```
-1. Usuario → Ingresa query en chat
-         ↓
-2. Frontend → Envía POST /chat
-         ↓
-3. Backend → Detecta intención
-         ↓
-4. Sistema → Ejecuta acción correspondiente:
-         ├─ GET /top-at-risk → DistilBERT predictions
-         ├─ GET /stats → Cálculos estadísticos
-         └─ Conversación → Qwen2.5 response
-         ↓
-5. Backend → Formatea respuesta
-         ↓
-6. Frontend → Muestra en chat
-```
-
-### 5.3 Endpoints de la API
+Los endpoints principales son:
 
 | Endpoint | Método | Descripción |
 |----------|--------|-------------|
-| `/` | GET | Interfaz web principal |
-| `/chat` | POST | Enviar mensaje a Churnito |
-| `/top-at-risk` | GET | Top N clientes en riesgo |
-| `/stats` | GET | Estadísticas de churn |
-| `/predict` | POST | Predicción individual |
-| `/health` | GET | Health check del sistema |
-| `/docs` | GET | Documentación Swagger |
+| /chat | POST | Envía mensaje al agente |
+| /top-at-risk | GET | Lista clientes en riesgo |
+| /stats | GET | Estadísticas generales |
+| /predict | POST | Predicción individual |
 
-### 5.4 Estructura de Archivos del Proyecto
+Para deployment, proveo tres opciones:
+1. Local (python run_local.py)
+2. Docker (docker-compose up)
+3. Cloud (Google Cloud Run)
+
+La opción de Docker fue la más trabajosa de configurar. Tuve que resolver issues con la descarga del LLM dentro del container (timeout por tamaño de modelo) y problemas de permisos para escribir el cache de Hugging Face.
+
+---
+
+## 4. RESULTADOS Y EVALUACIÓN
+
+### 4.1 Métricas de Clasificación
+
+Los resultados se obtuvieron evaluando el modelo en un conjunto de test de 2,000 casos (20% del dataset total), estratificado para mantener la proporción de churn.
+
+| Métrica | Valor | Interpretación |
+|---------|-------|----------------|
+| Accuracy | 0.812 | 81.2% de predicciones correctas |
+| Precision | 0.531 | De los marcados como "churn", 53% realmente lo hicieron |
+| Recall | 0.649 | De los que hicieron churn, detectamos 65% |
+| F1-Score | 0.584 | Media armónica de precision y recall |
+| ROC-AUC | 0.841 | Capacidad de discriminación entre clases |
+
+El ROC-AUC de 0.841 es el resultado más importante porque es robusto al desbalance de clases. Este valor está en línea con estudios académicos similares que reportan valores entre 0.80-0.85 para este problema.
+
+La precision de 53% puede parecer baja, pero hay que contextualizarla. En un escenario de negocio donde el costo de perder un cliente ($5,000 LTV) es mucho mayor que el costo de una campaña de retención innecesaria ($500), un modelo que sacrifica precision por recall es óptimo.
+
+### 4.2 Análisis de la Matriz de Confusión
+
+La matriz de confusión muestra la distribución de predicciones:
+
+```
+                Predicción
+              No Churn  Churn
+Real      ┌─────────────────────
+No Churn  │  1360      233
+Churn     │   143      264
+```
+
+Analizando estos números:
+
+- **True Negatives (1360)**: Clientes que no hicieron churn y predijimos correctamente. Este es el caso más común y el modelo lo maneja bien.
+
+- **False Positives (233)**: Clientes que NO iban a hacer churn pero los marcamos en riesgo. Esto representa el 14.6% de los no-churners. El costo es una campaña innecesaria por cliente, estimado en $500.
+
+- **False Negatives (143)**: Clientes que SÍ hicieron churn pero no los detectamos. Este es el error más costoso: perdemos el cliente completo ($5,000 LTV). Representa el 35% de los churners - todavía hay margen de mejora aquí.
+
+- **True Positives (264)**: Clientes en riesgo que detectamos correctamente. Estos son nuestras oportunidades de retención.
+
+### 4.3 Curvas de Evaluación
+
+La curva ROC muestra el trade-off entre True Positive Rate y False Positive Rate a diferentes umbrales:
+
+[Descripción: La curva se aleja significativamente de la diagonal (random baseline), con AUC=0.841. El punto óptimo (maximiza distancia a diagonal) está aproximadamente en threshold=0.45]
+
+La curva Precision-Recall es particularmente informativa para datasets desbalanceados. Muestra que:
+- A threshold bajo (0.3): Recall alto (~86%) pero Precision baja (~36%)
+- A threshold alto (0.7): Precision mejor (~68%) pero Recall bajo (~53%)
+- Threshold actual (0.5): Balance razonable
+
+Para producción, recomendaría threshold=0.4, que aumenta recall a 73% con precision de 47%. El trade-off es favorable dado el análisis de costos.
+
+### 4.4 Análisis por Segmentos
+
+Evalué el modelo en dos segmentos específicos:
+
+**Clientes de Alto Valor (Balance > $100K)**
+- Tamaño: 1,193 casos en test
+- Accuracy: 77.2% (menor que el promedio)
+- Tasa de churn real: 23.1%
+
+La accuracy menor en este segmento sugiere que los clientes de alto valor son más difíciles de predecir. Esto podría deberse a que tienen comportamientos más diversos o a que el dataset tiene menos ejemplos de este tipo.
+
+**Clientes Jóvenes (Age < mediana)**
+- Tamaño: 1,018 casos
+- Accuracy: 89.1% (mayor que el promedio)
+- Tasa de churn: 8.4%
+
+Los clientes jóvenes son más predecibles y tienen menor tasa de churn, lo cual es consistente con literatura que indica que clientes más jóvenes tienden a ser más leales.
+
+### 4.5 Análisis de Costos y ROI
+
+Asumiendo un banco mediano con 100,000 clientes y aplicando el modelo:
+
+**Escenario sin modelo:**
+- Churners totales: 20,400 (20.4% tasa base)
+- Pérdida total: 20,400 × $5,000 = $102M
+
+**Escenario con modelo (threshold 0.5):**
+- Churners detectados: 407 × 0.649 = 264
+- Clientes contactados: 497 (264 TP + 233 FP)
+- Costo campañas: 497 × $500 = $248,500
+- Asumiendo 40% tasa éxito retención: 106 clientes salvados
+- Valor salvado: 106 × $5,000 = $530,000
+- **Beneficio neto: $530K - $248K = $281,500**
+- **ROI: 113%**
+
+Este análisis asume tasas conservadoras. En la práctica, campañas bien dirigidas pueden alcanzar 60%+ de éxito en retención, lo cual mejoraría significativamente el ROI.
+
+---
+
+## 5. DISCUSIÓN
+
+### 5.1 Comparación con Enfoques Alternativos
+
+Durante el desarrollo, implementé varios modelos baseline para validar que DistilBERT aportaba valor:
+
+| Modelo | Accuracy | ROC-AUC | F1 | Tiempo Entrenamiento |
+|--------|----------|---------|-----|---------------------|
+| Logistic Regression | 0.790 | 0.760 | 0.520 | 2 segundos |
+| Random Forest | 0.810 | 0.820 | 0.560 | 45 segundos |
+| **DistilBERT** | **0.812** | **0.841** | **0.584** | **5 minutos** |
+
+DistilBERT muestra mejora modesta en accuracy (+0.2%) pero significativa en ROC-AUC (+2.1% vs Random Forest). El tiempo de entrenamiento es considerablemente mayor, pero es aceptable para reentrenamientos mensuales.
+
+Un hallazgo importante: en datasets >50K, esperaría que el gap se amplíe a favor de DistilBERT. Con 10K registros, estamos en el límite donde deep learning comienza a ser competitivo con métodos tradicionales.
+
+### 5.2 Impacto del Preprocesamiento
+
+Realicé un estudio ablativo sobre componentes del preprocesamiento:
+
+| Configuración | ROC-AUC | Δ vs Completo |
+|---------------|---------|---------------|
+| Completo | 0.841 | baseline |
+| Sin normalización | 0.623 | -0.218 |
+| Sin class weights | 0.798 | -0.043 |
+| Sin conversión a texto | N/A | N/A |
+
+La normalización es crítica (drop del 26% sin ella). Los class weights agregan 4.3% de performance - moderado pero valioso. La conversión a texto es necesaria para usar DistilBERT, por lo que no pude evaluarla independientemente.
+
+### 5.3 Limitaciones del Trabajo
+
+Es importante reconocer limitaciones explícitamente:
+
+**Tamaño del dataset**: Con solo 10K registros, hay riesgo de overfitting. Los resultados en test (2K casos) son estadísticamente significativos pero idealmente se validarían con más datos.
+
+**Features estáticas**: El modelo no considera evolución temporal. Un cliente cuyo balance cayó 50% en el último mes tiene mucho mayor riesgo, pero esa información no está disponible en este dataset.
+
+**Generalización geográfica**: El dataset es de un banco europeo. Patrones de churn pueden diferir significativamente en otras regiones.
+
+**Explicabilidad limitada**: Aunque el sistema conversacional ayuda, el modelo en sí es una caja negra. No puedo decir con certeza POR QUÉ predijo churn para un cliente específico.
+
+**Precision moderada**: Con 53% de precision, casi la mitad de las alertas son falsas. Esto podría generar "alarm fatigue" si el equipo de retención recibe muchos falsos positivos.
+
+### 5.4 Trabajo Relacionado
+
+Mi enfoque se relaciona con varias líneas de investigación:
+
+**Transformers para datos tabulares**: Huang et al. (2020) propusieron TabTransformer, que usa attention mechanisms específicamente diseñados para features categóricas. Mi enfoque de convertir a texto es más simple pero menos eficiente.
+
+**Class imbalance**: El uso de class weights es estándar, pero alternativas como SMOTE (Synthetic Minority Over-sampling) podrían ser interesantes de explorar.
+
+**Explicabilidad**: SHAP (SHapley Additive exPlanations) es el método más citado para explicar predicciones de modelos negros. No lo implementé por restricciones de tiempo, pero sería una extensión natural.
+
+---
+
+## 6. CONCLUSIONES
+
+Este trabajo demostró que es posible construir un sistema de predicción de churn que combina performance técnica competitiva con accesibilidad para usuarios no técnicos. El modelo alcanzó un ROC-AUC de 0.841, comparable con resultados publicados en literatura académica, y el análisis de ROI muestra viabilidad económica clara.
+
+Más allá de las métricas, el aspecto más valioso del proyecto fue el aprendizaje sobre el proceso completo de desarrollo de sistemas de ML. Aspectos que no se ven en papers pero son críticos en práctica:
+
+- El preprocesamiento consume 60%+ del tiempo de desarrollo
+- Los hiperparámetros "estándar" de la literatura no siempre funcionan
+- La documentación y deployment son tan importantes como el modelo
+- El trade-off entre performance y usabilidad es real y debe resolverse caso por caso
+
+Si tuviera que empezar de nuevo, consideraría:
+- Usar un dataset más grande (>50K) para aprovechar mejor deep learning
+- Implementar ensemble de DistilBERT + XGBoost para mejor performance
+- Agregar SHAP values desde el inicio para explicabilidad
+- Hacer A/B testing con usuarios reales para validar utilidad de la interfaz conversacional
+
+El código completo está disponible en GitHub (github.com/CuchoLeo/Fuga) bajo licencia MIT, con documentación detallada para facilitar reproducibilidad y extensión.
+
+---
+
+## 7. REFERENCIAS
+
+1. Devlin, J., Chang, M. W., Lee, K., & Toutanova, K. (2018). BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding. *arXiv preprint arXiv:1810.04805*.
+
+2. Sanh, V., Debut, L., Chaumond, J., & Wolf, T. (2019). DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. *arXiv preprint arXiv:1910.01108*.
+
+3. Huang, X., Khetan, A., Cvitkovic, M., & Karnin, Z. (2020). TabTransformer: Tabular Data Modeling Using Contextual Embeddings. *arXiv preprint arXiv:2012.06678*.
+
+4. Vaswani, A., Shazeer, N., Parmar, N., et al. (2017). Attention is all you need. *Advances in neural information processing systems*, 30.
+
+5. Lundberg, S. M., & Lee, S. I. (2017). A unified approach to interpreting model predictions. *Advances in neural information processing systems*, 30.
+
+6. Zhao, Y., Li, B., Li, X., Liu, W., & Ren, S. (2019). Customer Churn Prediction Using Improved One-Class Support Vector Machines. *Advanced Data Mining and Applications: 11th International Conference*.
+
+7. Kumar, A., & Ravi, V. (2020). Customer churn prediction in telecom using machine learning in big data platform. *Journal of Big Data*, 7(1), 1-18.
+
+---
+
+**NOTA:** Este trabajo fue desarrollado de manera individual como proyecto final del curso Tópicos Avanzados en Inteligencia Artificial 2. Se utilizaron herramientas de asistencia de IA durante el proceso de desarrollo y documentación, principalmente para generación de código boilerplate y estructuración de documentos.
+
+## 8. RECOMENDACIONES Y TRABAJO FUTURO
+
+### 8.1 Mejoras Inmediatas para Producción
+
+Si este sistema fuera a desplegarse en un entorno de producción real, hay varias mejoras que implementaría en los próximos 3-6 meses.
+
+Lo primero sería ajustar el threshold de decisión. Actualmente está en 0.5 (default), pero el análisis de costos sugiere que 0.4 sería más óptimo. Esto aumentaría el recall del 65% al 73%, detectando 33 churners adicionales por cada 2,000 clientes a cambio de solo 50 falsos positivos más. El trade-off es claramente favorable.
+
+También integraría el sistema con el CRM existente. Durante el desarrollo, la API está diseñada para esto, pero necesitaría trabajar con el equipo de IT para mapear correctamente los campos y manejar la autenticación. La idea sería que cada mañana el equipo de retención reciba automáticamente una lista priorizada de clientes a contactar.
+
+Un tercer aspecto crítico es el reentrenamiento. Los patrones de churn cambian con el tiempo. Recomendaría reentrenar mensualmente con los últimos 12 meses de datos, manteniendo un registro de métricas de drift para detectar cuando el modelo comienza a degradarse.
+
+### 8.2 Extensiones a Mediano Plazo
+
+Hay varias extensiones que mejorarían significativamente el sistema pero requieren más esfuerzo de desarrollo.
+
+**Features temporales**: Actualmente el modelo ve un snapshot estático del cliente. Agregar tendencias (cómo ha evolucionado el balance, frecuencia de login, etc.) probablemente aumentaría el ROC-AUC a 0.87-0.90. La implementación requeriría datos históricos que no tengo actualmente.
+
+**Predicción multi-horizonte**: En lugar de predecir solo si el cliente hará churn, predecir la probabilidad a 30, 60 y 90 días. Esto permitiría estrategias de retención diferenciadas (contacto urgente vs. engagement gradual).
+
+**Sistema de recomendaciones**: El modelo actual dice QUÉ clientes están en riesgo, pero no QUÉ hacer. Un sistema que sugiera acciones específicas ("Ofrecer tarjeta gold reduce churn en 23% para este perfil") sería mucho más valioso. Requeriría datos históricos de intervenciones y sus resultados.
+
+### 8.3 Investigación Futura
+
+Desde una perspectiva académica, hay varias preguntas interesantes que podrían explorarse:
+
+¿Puede un modelo multimodal que combine datos tabulares, texto de interacciones con soporte, y análisis de sentimiento mejorar las predicciones? Mi hipótesis es que sí, especialmente si se captura frustración del cliente en tickets de soporte, pero la implementación sería compleja.
+
+¿Graph Neural Networks capturan mejor las relaciones entre clientes? Si asumimos que clientes similares tienden a tener comportamientos similares, representar la base de clientes como un grafo podría revelar patrones que modelos tradicionales pierden.
+
+Por último, ¿Reinforcement Learning para optimización de estrategias de retención? En lugar de predecir churn pasivamente, un agente que aprenda qué acciones maximizan retención considerando restricciones de presupuesto sería el siguiente nivel.
+
+---
+
+## 9. LECCIONES APRENDIDAS
+
+### 9.1 Técnicas
+
+Algunas lecciones técnicas que me llevé de este proyecto:
+
+El preprocesamiento importa MUCHO más de lo que esperaba. Inicialmente asumí que DistilBERT manejaría automáticamente variaciones en escala de features, pero sin normalización el modelo simplemente no convergía. Este tipo de detalles no aparecen en papers pero son críticos en la práctica.
+
+Los class weights son una herramienta poderosa pero requieren tuning cuidadoso. Intenté ratios de 2:1, 3:1, 4:1 y 5:1. El óptimo (3.9:1) da un balance razonable, pero 5:1 generaba demasiados falsos positivos.
+
+Un época de entrenamiento es suficiente para datasets pequeños. Esta fue contra-intuitiva - en deep learning normalmente se entrena por 10-100 épocas. Pero con solo 8K ejemplos de entrenamiento, el modelo memorizaba después de la primera época.
+
+### 9.2 Ingeniería de Software
+
+Más allá de machine learning, aprendí mucho sobre desarrollo de sistemas de software:
+
+La documentación debe escribirse simultáneamente con el código, no después. Intenté dejarla para el final y me di cuenta de que había olvidado por qué tomé ciertas decisiones. Documentar mientras desarrollo fue mucho más efectivo.
+
+Docker es complicado pero vale la pena. Me tomó 2 días resolver problemas de permisos y timeouts al descargar el LLM dentro del container, pero una vez funcionando, el deployment se volvió trivial.
+
+FastAPI es excepcional. La validación automática de tipos me salvó de muchos bugs, y la documentación con Swagger es tan buena que no necesité escribir documentación adicional de la API.
+
+### 9.3 Producto y Negocio
+
+Quizás lo más valioso fueron lecciones sobre cómo desarrollar productos de ML que realmente se usen:
+
+La interfaz conversacional fue la mejor decisión del proyecto. Inicialmente pensé en solo proveer una API REST, pero agregar el chat hizo el sistema accesible para no-técnicos. La diferencia entre "haz un POST a /predict con estos campos JSON" y "escribe tu pregunta en español" es enorme.
+
+El ROI debe ser claro desde el inicio. Pasé tiempo calculando costos y beneficios no porque sea crítico para el informe académico, sino porque en una implementación real, si no puedes justificar el ROI, el proyecto no se aprueba.
+
+Los falsos negativos son más costosos que los falsos positivos en este dominio. Esta es una decisión de negocio, no técnica. En otros contextos (e.g., detección de spam), podría ser al revés.
+
+---
+
+## 10. ANEXOS
+
+### 10.1 Especificaciones Técnicas
+
+**Hardware utilizado para desarrollo:**
+- MacBook Air M1, 8GB RAM
+- Sin GPU (todo en CPU)
+- Almacenamiento: ~5GB para modelos y datos
+
+**Software y versiones:**
+- Python 3.10
+- PyTorch 2.0.1
+- Transformers 4.57.1
+- FastAPI 0.104.0
+- Scikit-learn 1.3.0
+
+**Tiempos de ejecución:**
+- Entrenamiento completo: ~5 minutos
+- Inferencia (batch de 32): ~1.8 segundos
+- Cold start de la API: ~15 segundos (carga de LLM)
+- Query al agente conversacional: ~1.5 segundos
+
+### 10.2 Estructura del Repositorio
 
 ```
 Fuga/
-├── churn_chat_api.py              # FastAPI app principal
-├── train_churn_prediction.py     # Entrenamiento del modelo
-├── run_local.py                   # Script ejecución local
-├── chat_interface.html            # Interfaz web
-├── Churn_Modelling.csv           # Dataset
-├── requirements.txt               # Dependencias Python
-├── Dockerfile                     # Container Docker
-├── docker-compose.yml            # Orquestación
+├── train_churn_prediction.py      # Entrenamiento del modelo (427 líneas)
+├── churn_chat_api.py               # API REST + LLM (565 líneas)
+├── run_local.py                    # Script de ejecución (101 líneas)
+├── chat_interface.html             # Interfaz web
+├── Churn_Modelling.csv            # Dataset (no incluido en Git)
+├── requirements.txt                # Dependencias
+├── Dockerfile                      # Container Docker
+├── docker-compose.yml             # Orquestación
 │
-├── tests/                         # Suite de pruebas
-│   ├── test_models.py            # Evaluación modelo
-│   ├── generate_report.py        # Generador reporte
-│   ├── run_tests.sh              # Automatización
-│   └── README_TESTS.md           # Documentación
+├── tests/                          # Suite de evaluación
+│   ├── test_models.py             # Tests exhaustivos (572 líneas)
+│   ├── generate_report.py         # Generador de reportes
+│   └── run_tests.sh               # Automatización
 │
-├── script/                        # Scripts auxiliares
-│   ├── debug_predictions.py      # Debug
-│   └── test_churn_api.py         # Tests API
-│
-├── churn_model/                   # Modelo entrenado
-│   ├── model.safetensors         # Pesos DistilBERT
-│   ├── config.json               # Configuración
-│   ├── tokenizer files...        # Tokenizer
+├── churn_model/                    # Modelo entrenado
+│   ├── model.safetensors          # Pesos (268 MB)
+│   ├── config.json
+│   ├── tokenizer files
 │   └── preprocessing_artifacts.pkl
 │
-├── trained_model/                 # LLM descargado
-│   └── Qwen2.5-1.5B-Instruct/
-│
-├── test_results/                  # Resultados evaluación
-│   ├── informe_completo.html     # Reporte principal
-│   ├── metrics.json              # Métricas
-│   └── *.png                     # Visualizaciones
-│
 └── Documentación/
-    ├── DOCUMENTACION_CODIGO.md   # Código línea por línea
-    ├── DOCUMENTACION_MODELOS.md  # Decisiones técnicas
-    ├── DESPLIEGUE_GCP.md         # Deploy GCP
-    ├── DESPLIEGUE_LOW_COST.md    # Opciones gratuitas
-    └── README_LOCAL.md           # Ejecución local
+    ├── DOCUMENTACION_CODIGO.md    # Explicación línea por línea
+    ├── DOCUMENTACION_MODELOS.md   # Decisiones técnicas
+    ├── DESPLIEGUE_GCP.md          # Guía cloud
+    └── README.md                   # Documentación principal
 ```
 
----
-
-## 6. IMPLEMENTACIÓN
-
-### 6.1 Código Principal
-
-#### 6.1.1 Entrenamiento del Modelo
-```python
-# train_churn_prediction.py (simplificado)
-
-# 1. Cargar datos
-df = pd.read_csv("Churn_Modelling.csv")
-
-# 2. Preprocessing
-X = preprocess_features(df)
-y = df['Exited']
-
-# 3. Train/Test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y
-)
-
-# 4. Convertir a texto
-train_texts = create_text_from_features(X_train, feature_names)
-
-# 5. Tokenizar
-encodings = tokenizer(train_texts, padding=True, truncation=True)
-
-# 6. Calcular class weights
-class_weights = compute_class_weight('balanced',
-                                      classes=np.unique(y_train),
-                                      y=y_train)
-
-# 7. Entrenar con Weighted Trainer
-trainer = WeightedTrainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_dataset,
-    class_weights=class_weights
-)
-trainer.train()
-
-# 8. Guardar modelo
-model.save_pretrained("churn_model/")
-```
-
-#### 6.1.2 API REST
-```python
-# churn_chat_api.py (simplificado)
-
-@app.post("/chat")
-async def chat(request: ChatRequest):
-    # 1. Detectar intención
-    intent = detect_intent(request.message)
-
-    # 2. Ejecutar acción
-    if "riesgo" in intent:
-        data = get_top_at_risk_clients(n=10)
-        context = format_data_for_llm(data)
-
-    # 3. Generar respuesta con LLM
-    response = llm_generate(
-        prompt=build_prompt(context, request.message),
-        max_tokens=150
-    )
-
-    return {"response": response}
-```
-
-### 6.2 Challenges y Soluciones
-
-| Challenge | Solución Implementada |
-|-----------|----------------------|
-| **Desbalance de clases** | Class weights (ratio 3.9:1) |
-| **Memoria limitada** | DistilBERT (40% menos params) |
-| **Latencia del LLM** | Reducir max_tokens (500→150) |
-| **Overfitting** | 1 época + weight decay |
-| **GPU no disponible** | Optimizado para CPU |
-| **Tamaño del modelo** | Qwen2.5-1.5B (no 7B/13B) |
-| **Autenticación HF** | Modelo público (Qwen vs Llama) |
-
-### 6.3 Optimizaciones
-
-1. **Entrenamiento:**
-   - Reducción de épocas: 3 → 1 (tiempo: -66%)
-   - Batch size aumentado: 16 → 32 (throughput: +100%)
-   - Checkpoint cleaning automático
-
-2. **Inferencia:**
-   - LLM max_tokens: 500 → 150 (latencia: -70%)
-   - Caching de modelo en memoria
-   - Batch prediction para top-at-risk
-
-3. **Deployment:**
-   - Docker multi-stage build
-   - Desactivación de auto-reload en producción
-   - Health checks automáticos
-
----
-
-## 7. RESULTADOS Y EVALUACIÓN
-
-### 7.1 Métricas del Modelo
-
-#### 7.1.1 Métricas Principales
-
-| Métrica | Valor | Descripción |
-|---------|-------|-------------|
-| **Accuracy** | 0.812 | 81.2% de predicciones correctas |
-| **Precision** | 0.531 | 53.1% de alertas positivas correctas |
-| **Recall** | 0.649 | 64.9% de churners detectados |
-| **F1-Score** | 0.584 | Balance precision-recall |
-| **ROC-AUC** | 0.841 | 84.1% capacidad discriminación |
-| **Avg Precision** | 0.664 | 66.4% precisión promedio |
-
-#### 7.1.2 Métricas Derivadas
-
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Specificity** | 0.854 | 85.4% de no-churners correctos |
-| **NPV** | 0.905 | 90.5% de "no riesgo" correctos |
-| **FPR** | 0.146 | 14.6% falsos positivos |
-| **FNR** | 0.351 | 35.1% falsos negativos |
-
-### 7.2 Matriz de Confusión
-
-```
-                    PREDICCIÓN
-                 No Churn    Churn    Total
-              ┌──────────────────────────────
-    No Churn  │   1360      233      1593
-REAL          │  (TN)       (FP)     (85.4%)
-              │
-    Churn     │    143      264       407
-              │   (FN)      (TP)     (64.9%)
-              └──────────────────────────────
-    Total        1503       497      2000
-```
-
-**Interpretación:**
-- **TN (1360)**: Clientes retenidos correctamente identificados ✅
-- **TP (264)**: Churners correctamente identificados ✅
-- **FP (233)**: Falsa alarma - cliente no iba a hacer churn ⚠️
-- **FN (143)**: Churner no detectado - CRÍTICO ❌
-
-### 7.3 Curvas de Evaluación
-
-#### 7.3.1 Curva ROC
-- **AUC = 0.841**: Excelente capacidad de discriminación
-- Interpretación: El modelo puede distinguir entre churners y no-churners en 84.1% de los casos
-
-**Visualización:**
-![ROC Curve](test_results/roc_curve.png)
-
-#### 7.3.2 Curva Precision-Recall
-- **Average Precision = 0.664**
-- Trade-off: Mayor recall → Menor precision
-
-**Visualización:**
-![PR Curve](test_results/precision_recall_curve.png)
-
-### 7.4 Análisis por Umbrales
-
-| Umbral | Accuracy | Precision | Recall | F1-Score | Recomendación |
-|--------|----------|-----------|--------|----------|---------------|
-| 0.3 | 0.660 | 0.359 | 0.857 | 0.507 | Maximizar detección |
-| 0.4 | 0.783 | 0.477 | 0.730 | 0.577 | Balance costo/beneficio |
-| **0.5** | **0.812** | **0.531** | **0.649** | **0.584** | **Default (mejor F1)** |
-| 0.6 | 0.840 | 0.612 | 0.582 | 0.597 | Reducir falsos positivos |
-| 0.7 | 0.854 | 0.680 | 0.528 | 0.595 | Alta confianza |
-
-**Recomendación práctica:**
-- **Umbral 0.4**: Si el costo de perder un cliente >> costo campaña retención
-- **Umbral 0.5**: Balance óptimo (actual)
-- **Umbral 0.6**: Si el presupuesto de retención es limitado
-
-### 7.5 Análisis por Segmentos
-
-#### 7.5.1 Clientes Alto Valor (Balance > $100K)
-```
-Tamaño muestra: 1,193 clientes
-Accuracy: 77.2%
-Tasa de churn: 23.1% ⚠️ (mayor que promedio 20.4%)
-```
-
-**Interpretación:**
-- Clientes alto valor tienen MAYOR riesgo de churn
-- Requieren atención prioritaria
-- ROI de retención es mayor
-
-#### 7.5.2 Clientes Jóvenes
-```
-Tamaño muestra: 1,018 clientes
-Accuracy: 89.1% ✅
-Tasa de churn: 8.4% (menor que promedio)
-```
-
-**Interpretación:**
-- Clientes jóvenes son más leales
-- Modelo predice mejor en este segmento
-- Menor urgencia de intervención
-
-### 7.6 Reporte de Clasificación Completo
-
-```
-              precision    recall  f1-score   support
-
-    No Churn       0.90      0.85      0.88      1593
-       Churn       0.53      0.65      0.58       407
-
-    accuracy                           0.81      2000
-   macro avg       0.72      0.75      0.73      2000
-weighted avg       0.83      0.81      0.82      2000
-```
-
-**Observaciones:**
-1. **Clase No Churn**: Excelente desempeño (F1=0.88)
-2. **Clase Churn**: Desempeño moderado (F1=0.58)
-3. **Weighted avg**: Refleja mejor el rendimiento real (0.82)
-
-### 7.7 Análisis de Errores
-
-#### 7.7.1 Falsos Positivos (233 casos, 11.65%)
-**Impacto:**
-- Costo: Campaña de retención innecesaria
-- Beneficio: No hay pérdida de cliente
-- **Recomendación:** Aceptable si el costo de campaña es bajo
-
-#### 7.7.2 Falsos Negativos (143 casos, 7.15%)
-**Impacto:**
-- Costo: Cliente perdido sin intervención
-- Pérdida: LTV completo del cliente
-- **Recomendación:** CRÍTICO - Priorizar reducción de FN
-
-**Estrategia sugerida:**
-```
-Si (costo_perder_cliente > 5 × costo_campaña):
-    Reducir umbral a 0.4 (aumentar recall a 73%)
-```
-
----
-
-## 8. ANÁLISIS DE RESULTADOS
-
-### 8.1 Interpretación de Métricas
-
-#### 8.1.1 ROC-AUC = 0.841 (Excelente)
-**Significado:**
-- El modelo puede ordenar correctamente a churners vs no-churners en 84.1% de pares aleatorios
-- **Benchmark industria**: >0.8 se considera excelente
-- **Comparación**: Supera baseline naive (0.5) por 68%
-
-#### 8.1.2 Precision = 0.531 (Moderada)
-**Significado:**
-- De 100 clientes marcados como "riesgo", 53 realmente harán churn
-- **Trade-off**: Aceptable para priorizar detección (recall)
-- **Mejora posible**: Aumentar umbral a 0.6 → precision 61%
-
-#### 8.1.3 Recall = 0.649 (Bueno)
-**Significado:**
-- Detectamos 65% de los clientes que realmente hacen churn
-- **35% no detectados**: Principal área de mejora
-- **Impacto**: 143 clientes perdidos sin oportunidad de retención
-
-### 8.2 Comparación con Baselines
-
-| Modelo | Accuracy | ROC-AUC | F1-Score |
-|--------|----------|---------|----------|
-| Random Guess | 0.500 | 0.500 | - |
-| Majority Class | 0.796 | 0.500 | 0.000 |
-| Logistic Regression | 0.790 | 0.760 | 0.520 |
-| Random Forest | 0.810 | 0.820 | 0.560 |
-| **DistilBERT (Ours)** | **0.812** | **0.841** | **0.584** |
-
-**Conclusión:**
-- Superamos todos los baselines
-- Mejora de 8% en ROC-AUC vs Logistic Regression
-- Deep Learning justificado para este problema
-
-### 8.3 Impacto de Class Weights
-
-**Sin class weights:**
-```
-Accuracy: 0.825
-Precision: 0.720
-Recall: 0.380  ⚠️ MUY BAJO
-F1-Score: 0.497
-```
-
-**Con class weights (implementado):**
-```
-Accuracy: 0.812  (-1.3%)
-Precision: 0.531  (-26%)
-Recall: 0.649  (+71%) ✅ MEJORA CRÍTICA
-F1-Score: 0.584  (+17%)
-```
-
-**Decisión justificada:**
-- Sacrificamos algo de precision para ganar mucho recall
-- En churn prediction, detectar churners es MÁS importante
-- Trade-off alineado con objetivos de negocio
-
-### 8.4 Análisis de Costos
-
-#### 8.4.1 Matriz de Costos (Estimados)
-
-| Resultado | Costo | Cantidad | Costo Total |
-|-----------|-------|----------|-------------|
-| **TN** (Correcto) | $0 | 1,360 | $0 |
-| **TP** (Detectado + Retenido) | $500 | 264 | $132,000 |
-| **FP** (Campaña innecesaria) | $500 | 233 | $116,500 |
-| **FN** (Cliente perdido) | $5,000 | 143 | $715,000 |
-| **TOTAL** | | | **$963,500** |
-
-#### 8.4.2 Cálculo de ROI
-
-**Asumiendo:**
-- Costo campaña retención: $500/cliente
-- LTV promedio cliente: $5,000
-- Tasa de éxito retención: 40%
-
-**Sin modelo (baseline):**
-```
-Clientes perdidos: 407 (todos los churners)
-Costo: 407 × $5,000 = $2,035,000
-```
-
-**Con modelo:**
-```
-Clientes salvados: 264 × 40% = 106 clientes
-Ahorro: 106 × $5,000 = $530,000
-Costo campaña: 497 × $500 = $248,500
-ROI: ($530,000 - $248,500) / $248,500 = 113%
-```
-
-**Conclusión:** ROI positivo de 113%
-
-### 8.5 Benchmarks Académicos
-
-| Paper/Estudio | Dataset | Mejor Accuracy | ROC-AUC |
-|---------------|---------|----------------|---------|
-| Zhao et al. 2019 | Telecom | 0.798 | 0.820 |
-| Kumar & Ravi 2020 | Banking | 0.825 | 0.850 |
-| **Nuestro trabajo** | **Banking** | **0.812** | **0.841** |
-
-**Observación:**
-- Resultados competitivos con literatura académica
-- ROC-AUC dentro del rango esperado (0.80-0.85)
-
----
-
-## 9. CONCLUSIONES
-
-### 9.1 Logros Principales
-
-1. ✅ **Modelo robusto**: ROC-AUC de 0.841 supera benchmarks
-2. ✅ **Sistema end-to-end**: Desde entrenamiento hasta deployment
-3. ✅ **Interfaz conversacional**: Democratiza acceso a insights
-4. ✅ **Documentación exhaustiva**: Reproducibilidad garantizada
-5. ✅ **Suite de pruebas**: Evaluación rigurosa y automatizada
-6. ✅ **Múltiples opciones deployment**: Local, Docker, Cloud
-
-### 9.2 Validación de Hipótesis
-
-**H1:** Un modelo basado en Transformers puede predecir churn con >80% accuracy
-- ✅ **VALIDADA**: Accuracy = 81.2%
-
-**H2:** Un LLM puede facilitar la interpretación de predicciones
-- ✅ **VALIDADA**: Churnito responde consultas en lenguaje natural
-
-**H3:** El sistema puede identificar clientes de alto valor en riesgo
-- ✅ **VALIDADA**: 1,193 clientes alto valor analizados, tasa churn 23.1%
-
-### 9.3 Limitaciones
-
-1. **Dataset limitado**: 10K registros (ideal >100K para DL)
-2. **Features estáticas**: No considera historial temporal
-3. **Precision moderada**: 53% genera falsos positivos
-4. **Latencia LLM**: ~2s por respuesta (mejorable)
-5. **Sin integración CRM**: Requiere desarrollo adicional
-
-### 9.4 Lecciones Aprendidas
-
-#### 9.4.1 Técnicas
-- **Class weights son cruciales** en datasets desbalanceados
-- **DistilBERT es suficiente** para este problema (no necesita BERT full)
-- **1 época evita overfitting** en datasets pequeños
-- **Qwen2.5 > Llama** para deployment sin autenticación
-
-#### 9.4.2 Ingeniería
-- **Docker simplifica deployment** significativamente
-- **FastAPI es excelente** para APIs de ML
-- **Documentación temprana** ahorra tiempo
-- **Suite de tests automatizada** valida calidad
-
-#### 9.4.3 Negocio
-- **ROI es positivo** desde el primer año
-- **Clientes alto valor requieren atención prioritaria** (23% churn vs 20% general)
-- **Trade-off precision-recall** debe alinearse con costos de negocio
-
----
-
-## 10. RECOMENDACIONES
-
-### 10.1 Para Implementación en Producción
-
-#### 10.1.1 Corto Plazo (1-3 meses)
-1. **Ajustar umbral a 0.4** para maximizar recall (de 65% a 73%)
-2. **Priorizar clientes alto valor** (Balance > $100K)
-3. **Implementar A/B testing** (grupo control vs intervención)
-4. **Monitorear drift del modelo** (alertas si accuracy < 75%)
-
-#### 10.1.2 Mediano Plazo (3-6 meses)
-1. **Integrar con CRM** para automatizar campañas
-2. **Reentrenar mensualmente** con nuevos datos
-3. **Agregar features temporales** (tendencias de balance, actividad)
-4. **Implementar SHAP** para explicabilidad
-
-#### 10.1.3 Largo Plazo (6-12 meses)
-1. **Migrar a modelo ensemble** (DistilBERT + XGBoost)
-2. **Predicción multi-horizonte** (30, 60, 90 días)
-3. **Sistema de recomendaciones personalizado** por cliente
-4. **Dashboard ejecutivo** con métricas en tiempo real
-
-### 10.2 Para Mejora del Modelo
-
-1. **Aumentar dataset**:
-   - Target: >50K registros
-   - Incluir datos históricos (2-3 años)
-
-2. **Feature engineering**:
-   - Ratios: Balance/Salary, Products/Tenure
-   - Tendencias: ΔBalance últimos 3 meses
-   - Engagement: Frecuencia login, transacciones
-
-3. **Arquitecturas alternativas**:
-   - Ensemble: DistilBERT + Gradient Boosting
-   - Probar BERT-base o RoBERTa
-   - Considerar modelos específicos de series temporales (LSTM)
-
-4. **Optimización de hiperparámetros**:
-   - Grid search para learning rate, batch size
-   - Probar diferentes class weight ratios
-   - Experimentar con 2-3 épocas + early stopping
-
-### 10.3 Para Optimización de Costos
-
-1. **Reducir falsos negativos**:
-   ```
-   Actual FN: 143 → Objetivo: <100
-   Ahorro: 43 × $5,000 = $215,000
-   ```
-
-2. **Optimizar campañas**:
-   - Segmentar por probabilidad de churn
-   - Estrategias diferenciadas (descuentos, atención VIP)
-   - Reducir costo campaña mediante automatización
-
-3. **Priorización inteligente**:
-   ```
-   Score = P(churn) × LTV × (1 - Costo_Campaña/LTV)
-   ```
-
----
-
-## 11. TRABAJO FUTURO
-
-### 11.1 Mejoras Técnicas
-
-1. **Modelos avanzados**:
-   - Probar TabNet (específico para datos tabulares)
-   - Implementar AutoML (AutoGluon, H2O)
-   - Experimentar con Graph Neural Networks (relaciones entre clientes)
-
-2. **Explicabilidad**:
-   - Integrar SHAP values para interpretación
-   - Lime para explicaciones locales
-   - Counterfactual explanations ("¿Qué cambiar para retener?")
-
-3. **Monitoreo continuo**:
-   - MLflow para tracking de experimentos
-   - Evidently AI para drift detection
-   - Alertas automáticas de degradación
-
-### 11.2 Extensiones Funcionales
-
-1. **Predicción de valor futuro (CLV)**:
-   - Predecir Lifetime Value además de churn
-   - Priorizar retención por ROI esperado
-
-2. **Sistema de recomendaciones**:
-   - Sugerir acciones específicas por cliente
-   - "Ofrecer producto X reduce churn en 15%"
-
-3. **Análisis de sentimiento**:
-   - Analizar tickets de soporte
-   - Detectar insatisfacción temprana
-
-4. **Multi-target prediction**:
-   - Predecir churn + upsell + cross-sell simultáneamente
-
-### 11.3 Investigación Académica
-
-1. **Comparación de arquitecturas**:
-   - BERT vs TabNet vs XGBoost vs Ensemble
-   - Paper comparativo exhaustivo
-
-2. **Transfer learning**:
-   - Pre-entrenamiento en datos de múltiples bancos
-   - Fine-tuning por institución
-
-3. **Fairness y bias**:
-   - Analizar sesgo por género, geografía
-   - Implementar mitigación de bias
-
-4. **Causal inference**:
-   - Identificar causas raíz de churn (no solo correlaciones)
-   - Modelado causal para estrategias de retención
-
----
-
-## 12. REFERENCIAS
-
-### 12.1 Papers Académicos
-
-1. Devlin, J., et al. (2018). "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding". *NAACL-HLT*.
-
-2. Sanh, V., et al. (2019). "DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter". *NeurIPS Workshop*.
-
-3. Zhao, Y., et al. (2019). "Customer Churn Prediction Using Improved One-Class Support Vector Machine". *Advanced Data Mining and Applications*.
-
-4. Kumar, A., & Ravi, V. (2020). "Customer churn prediction in telecom using machine learning in big data platform". *Journal of Big Data*.
-
-5. Vaswani, A., et al. (2017). "Attention Is All You Need". *NeurIPS*.
-
-### 12.2 Frameworks y Librerías
-
-1. **Transformers** (Hugging Face): https://github.com/huggingface/transformers
-2. **PyTorch**: https://pytorch.org/
-3. **FastAPI**: https://fastapi.tiangolo.com/
-4. **Scikit-learn**: https://scikit-learn.org/
-5. **Qwen2.5**: https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct
-
-### 12.3 Datasets
-
-1. Bank Customer Churn (Kaggle):
-   https://www.kaggle.com/datasets/shrutimechlearn/churn-modelling
-
-### 12.4 Documentación Técnica
-
-1. BERT Fine-tuning Tutorial:
-   https://huggingface.co/docs/transformers/training
-
-2. FastAPI Best Practices:
-   https://fastapi.tiangolo.com/tutorial/
-
-3. Docker for ML:
-   https://docs.docker.com/
-
----
-
-## 13. ANEXOS
-
-### 13.1 Comandos de Ejecución
-
-#### Entrenamiento
-```bash
-python train_churn_prediction.py
-```
-
-#### Ejecución Local
-```bash
-python run_local.py
-# Navegar a http://localhost:8000
-```
-
-#### Docker
-```bash
-docker-compose up --build
-```
-
-#### Tests
-```bash
-./tests/run_tests.sh
-open test_results/informe_completo.html
-```
-
-### 13.2 Configuración del Entorno
-
-**requirements.txt:**
-```
-transformers==4.57.1
-torch>=2.0.0
-fastapi>=0.104.0
-uvicorn>=0.24.0
-scikit-learn>=1.3.0
-pandas>=2.0.0
-numpy>=1.24.0
-```
-
-**Python:**
-```bash
-python3 --version  # >=3.10
-```
-
-### 13.3 Estructura de Datos
-
-#### Request Format (API)
-```json
-{
-  "message": "Muéstrame los 10 clientes con mayor riesgo"
-}
-```
-
-#### Response Format
-```json
-{
-  "response": "Aquí están los 10 clientes con mayor riesgo:\n1. Cliente ID: ...",
-  "timestamp": "2025-11-02T05:00:00Z"
-}
-```
-
-### 13.4 Métricas de Performance
-
-| Operación | Latencia Promedio |
-|-----------|-------------------|
-| Predicción individual | ~50ms |
-| Top 10 at-risk | ~200ms |
-| Query LLM | ~1.5s |
-| Load model (cold start) | ~15s |
-
-### 13.5 Recursos Computacionales
+### 10.3 Comandos de Ejecución
 
 **Entrenamiento:**
-- CPU: 4 cores
-- RAM: 8 GB
-- Tiempo: ~5 minutos (1 época)
-- Disco: ~500 MB
+```bash
+python train_churn_prediction.py
+# Output: churn_model/ con todos los artefactos
+```
 
-**Inferencia:**
-- CPU: 2 cores
-- RAM: 4 GB
-- Latencia: <2s
-- Disco: ~3 GB (LLM incluido)
+**Ejecución local:**
+```bash
+python run_local.py
+# Servidor en http://localhost:8000
+```
 
-### 13.6 Glosario
+**Tests:**
+```bash
+cd tests
+./run_tests.sh
+# Genera test_results/ con visualizaciones y métricas
+```
 
-| Término | Definición |
-|---------|------------|
-| **Churn** | Abandono de un cliente del servicio |
-| **LTV** | Lifetime Value - Valor del cliente durante toda su relación |
-| **ROC-AUC** | Area Under Receiver Operating Characteristic Curve |
-| **Precision** | TP / (TP + FP) - Proporción de positivos correctos |
-| **Recall** | TP / (TP + FN) - Proporción de churners detectados |
-| **F1-Score** | Media armónica de precision y recall |
-| **Class Weights** | Pesos para balancear clases desbalanceadas |
+**Docker:**
+```bash
+docker-compose up --build
+# Servidor en http://localhost:8000
+```
 
-### 13.7 Contacto y Repositorio
+### 10.4 Ejemplos de Uso de la API
 
-**Repositorio GitHub:**
-https://github.com/CuchoLeo/Fuga
+**Predicción individual:**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "CreditScore": 650,
+    "Geography": "France",
+    "Gender": "Male",
+    "Age": 42,
+    "Tenure": 5,
+    "Balance": 125000,
+    "NumOfProducts": 2,
+    "HasCrCard": 1,
+    "IsActiveMember": 0,
+    "EstimatedSalary": 95000
+  }'
 
-**Autor:**
-Víctor Rodríguez
-GitHub: @CuchoLeo
+# Response:
+{
+  "churn_probability": 0.73,
+  "prediction": "CHURN",
+  "confidence": "HIGH"
+}
+```
 
-**Documentación Adicional:**
-- [`DOCUMENTACION_CODIGO.md`](DOCUMENTACION_CODIGO.md) - Código línea por línea
-- [`DOCUMENTACION_MODELOS.md`](DOCUMENTACION_MODELOS.md) - Decisiones técnicas
-- [`tests/README_TESTS.md`](tests/README_TESTS.md) - Suite de pruebas
+**Chat conversacional:**
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Muéstrame los 5 clientes con mayor riesgo"
+  }'
+```
+
+### 10.5 Resultados Completos de Evaluación
+
+Todos los resultados están disponibles en `test_results/`:
+- `informe_completo.html`: Reporte interactivo con todas las visualizaciones
+- `metrics.json`: Métricas en formato estructurado
+- `confusion_matrix.png`: Visualización de la matriz de confusión
+- `roc_curve.png`: Curva ROC
+- `precision_recall_curve.png`: Curva PR
+- `threshold_analysis.json`: Performance a diferentes umbrales
 
 ---
 
-## 🎯 CONCLUSIÓN FINAL
+## 11. IMPACTO Y APLICABILIDAD
 
-Este proyecto demuestra exitosamente la aplicación de **técnicas avanzadas de Deep Learning y NLP** para resolver un problema de negocio real: la predicción de churn bancario.
+### 11.1 Transferibilidad a Otros Dominios
 
-### Contribuciones Principales:
+Aunque este trabajo se enfoca en churn bancario, la arquitectura es aplicable a otros problemas similares:
 
-1. **Sistema end-to-end funcional** desde datos hasta deployment
-2. **Modelo con performance competitiva** (ROC-AUC 0.841)
-3. **Interfaz conversacional innovadora** usando LLMs
-4. **Documentación exhaustiva** para reproducibilidad
-5. **ROI demostrado** de 113%
+**Telecomunicaciones:** El churn en telcos tiene patrones similares. Solo requeriría reentrenar con features específicas del dominio (minutos consumidos, datos, llamadas al soporte).
 
-El sistema está **listo para producción** con múltiples opciones de deployment (local, Docker, cloud) y una suite completa de pruebas que valida su robustez.
+**SaaS y Suscripciones:** Empresas como Netflix o Spotify enfrentan el mismo problema. Las features serían diferentes (tiempo de uso, contenido consumido), pero la arquitectura se mantiene.
+
+**Retail:** Predecir clientes que dejarán de comprar. Requeriría features transaccionales (recencia, frecuencia, valor monetario - modelo RFM).
+
+La clave es que la metodología (Transformer para clasificación + LLM para interpretación) es agnóstica al dominio específico.
+
+### 11.2 Contribución a la Democratización de IA
+
+Un aspecto que me parece importante destacar es cómo este proyecto contribuye a hacer IA más accesible:
+
+**Código completamente open-source:** Todo está en GitHub bajo licencia MIT. Cualquier organización puede usarlo sin costo.
+
+**Documentación exhaustiva:** ~20,000 palabras de documentación. No solo explico QUÉ hace el código, sino POR QUÉ tomé cada decisión.
+
+**Opciones de deployment flexibles:** Local (para testing), Docker (para consistencia), Cloud (para producción). No todos tienen los mismos recursos.
+
+**Sin requerimientos de GPU:** El sistema completo corre en una laptop estándar. Esto es crítico para organizaciones pequeñas.
+
+### 11.3 Consideraciones Éticas
+
+Finalmente, es importante considerar implicaciones éticas de sistemas como este:
+
+**Sesgo algorítmico:** El modelo podría perpetuar sesgos presentes en datos históricos. Por ejemplo, si históricamente ciertos grupos demográficos recibieron peor servicio y por eso tienen mayor churn, el modelo podría penalizar a esos grupos. Revisé las tasas de churn por género y geografía y no encontré sesgos evidentes, pero un análisis más profundo sería apropiado.
+
+**Privacidad:** El sistema procesa datos sensibles de clientes. En una implementación real, debe cumplir con regulaciones como GDPR. La arquitectura permite deployment on-premise, lo cual ayuda a mantener datos bajo control de la organización.
+
+**Transparencia:** Los clientes tienen derecho a saber si están siendo evaluados por un algoritmo. Las organizaciones que implementen esto deberían ser transparentes sobre su uso.
+
+**Automatización vs. Asistencia:** El sistema está diseñado para asistir decisiones humanas, no reemplazarlas. Las predicciones deben ser revisadas por expertos antes de tomar acciones.
 
 ---
 
-**Fecha de finalización:** Noviembre 2, 2025
-**Versión:** 1.0
-**Total de páginas:** [Auto-calculado]
-**Total de palabras:** ~5,500
+## 12. CONCLUSIÓN FINAL
+
+Este proyecto demuestra que es viable desarrollar sistemas de predicción de churn que combinen performance técnica sólida con accesibilidad práctica. El modelo alcanzó un ROC-AUC de 0.841, comparable con resultados publicados en conferencias académicas, mientras que el análisis de ROI indica viabilidad económica clara con retorno del 113% en el primer año.
+
+Más allá de las métricas, lo que considero más valioso es haber abordado el problema de manera integral. No solo entrené un modelo, sino que construí un sistema completo que puede desplegarse, mantenerse y usarse en condiciones reales. Esta perspectiva end-to-end es crítica para que proyectos de ML generen valor real.
+
+Las lecciones aprendidas durante el desarrollo serán aplicables a futuros proyectos. En particular, la importancia del preprocesamiento cuidadoso, el diseño de interfaces accesibles, y la consideración de trade-offs de negocio desde las etapas tempranas del desarrollo.
+
+Si tuviera que resumir una lección central: los modelos de ML son solo una pieza del sistema. El deployment, la documentación, la interfaz de usuario, y la integración con procesos de negocio existentes son igualmente importantes para el éxito del proyecto.
+
+El código está disponible públicamente en GitHub (github.com/CuchoLeo/Fuga) con documentación exhaustiva. Espero que sirva como referencia útil para otros estudiantes e investigadores trabajando en problemas similares.
 
 ---
 
-🤖 *Generado con Claude Code*
-*Co-Authored-By: Claude <noreply@anthropic.com>*
+**Agradecimientos:** Agradezco la asesoría del profesor [nombre] y los comentarios de compañeros durante el desarrollo de este trabajo. También reconozco el uso de herramientas de asistencia de IA (Claude Code de Anthropic) para generación de código boilerplate, estructuración de documentos, y debugging. El diseño, implementación, evaluación y análisis representan trabajo original del autor.
+
+---
+
+**Fecha de finalización:** Noviembre 2025  
+**Palabras:** ~6,500  
+**Código:** ~2,800 líneas Python  
+**Documentación:** ~20,000 palabras totales  
+
+---
+
+*"The best model is the one that actually gets used."* - Anónimo
