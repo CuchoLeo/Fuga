@@ -1,6 +1,44 @@
 # 🎯 Sistema de Predicción de Churn con Chat IA
 Sistema completo de predicción de fuga de clientes usando IA, con interfaz conversacional en lenguaje natural.
 
+---
+
+## 🚀 INICIO RÁPIDO CON DOCKER (Recomendado)
+
+**¿Solo tienes Docker instalado? ¡Perfecto!**
+
+### **Opción 1: Quick Start (5 minutos)**
+👉 **[README_QUICK_START.md](README_QUICK_START.md)** - Instrucciones mínimas para empezar YA
+
+### **Opción 2: Instalación Completa**
+👉 **[INSTALACION_DOCKER.md](INSTALACION_DOCKER.md)** - Guía paso a paso detallada con Docker
+
+**Requisitos:**
+- ✅ Docker Desktop instalado y corriendo
+- ✅ 8GB RAM disponible
+- ✅ 5GB espacio en disco
+
+**Comandos básicos:**
+```bash
+# 1. Clonar
+git clone https://github.com/CuchoLeo/Fuga.git
+cd Fuga
+git checkout claude/create-docker-image-011CUWiCdkyttEZPktomfqF1
+
+# 2. Descargar dataset (manual desde Kaggle)
+# https://www.kaggle.com/datasets/shrutimechlearn/churn-modelling
+
+# 3. Construir, entrenar e iniciar
+docker-compose build
+docker-compose run --rm churn-api python train_churn_prediction.py
+docker-compose up -d
+
+# 4. Abrir navegador
+open http://localhost:8000/docs
+```
+
+---
+
 ## 📋 Descripción del Problema
 
 **Situación Actual:**
@@ -14,6 +52,19 @@ Sistema completo de predicción de fuga de clientes usando IA, con interfaz conv
 Sistema de IA que predice qué clientes están en riesgo de abandonar, con chat en lenguaje natural para consultas y análisis.
 ---
 
+## 📚 Documentación Técnica
+
+Para entender las decisiones técnicas detrás del sistema:
+
+- 📖 **[DOCUMENTACION_CODIGO.md](DOCUMENTACION_CODIGO.md)** - Código explicado línea por línea
+- 🤖 **[DOCUMENTACION_MODELOS.md](DOCUMENTACION_MODELOS.md)** - Todos los modelos comparados y decisiones técnicas
+- 💻 **[README_LOCAL.md](README_LOCAL.md)** - Guía de ejecución local sin Docker
+- ☁️ **[DESPLIEGUE_GCP.md](DESPLIEGUE_GCP.md)** - Despliegue en Google Cloud Platform (Cloud Run, Compute Engine)
+- 💰 **[DESPLIEGUE_LOW_COST.md](DESPLIEGUE_LOW_COST.md)** - Despliegue GRATIS o bajo costo (<$5/mes) - Oracle Cloud, GCP Free Tier, Railway
+- 📓 **[Churnito_Colab.ipynb](Churnito_Colab.ipynb)** - Notebook completo para Google Colab
+
+---
+
 ## 🏗️ Arquitectura del Sistema
 
 ```
@@ -23,7 +74,7 @@ Sistema de IA que predice qué clientes están en riesgo de abandonar, con chat 
 │                                                               │
 │  ┌──────────────────┐      ┌──────────────────┐            │
 │  │  Modelo LLM      │      │  Modelo Churn    │            │
-│  │  (Llama 3.2)     │◄────►│  (DistilBERT)    │            │
+│  │  (Qwen2.5 1.5B)  │◄────►│  (DistilBERT)    │            │
 │  │  Conversación    │      │  Clasificación   │            │
 │  └──────────────────┘      └──────────────────┘            │
 │           │                         │                        │
@@ -53,25 +104,33 @@ Sistema de IA que predice qué clientes están en riesgo de abandonar, con chat 
 
 ## 📦 Instalación
 
-### 1. Requisitos Previos
+### ⭐ Opción 1: Docker (Recomendado)
+
+**La forma más fácil y rápida de empezar:**
+
+👉 **Ver guía completa:** [INSTALACION_DOCKER.md](INSTALACION_DOCKER.md)
 
 ```bash
-Python 3.8+
-CUDA (opcional, para GPU)
+docker-compose build
+docker-compose run --rm churn-api python train_churn_prediction.py
+docker-compose up -d
 ```
 
-### 2. Instalar Dependencias
+✅ No necesitas instalar Python, dependencias ni configurar nada
+✅ Todo funciona en un contenedor aislado
+✅ Incluye todas las dependencias pre-instaladas
 
-```bash
-pip install torch torchvision torchaudio
-pip install transformers
-pip install fastapi uvicorn
-pip install pandas scikit-learn
-pip install requests
-```
+---
 
-O usa requirements.txt:
+### 🐍 Opción 2: Instalación con Python Local
 
+**Solo si no quieres usar Docker:**
+
+**Requisitos:**
+- Python 3.8+
+- CUDA (opcional, para GPU)
+
+**Instalar dependencias:**
 ```bash
 pip install -r requirements.txt
 ```
@@ -80,9 +139,13 @@ pip install -r requirements.txt
 ```
 torch>=2.0.0
 transformers>=4.30.0
+accelerate>=0.26.0
+datasets>=2.14.0
 fastapi>=0.100.0
-uvicorn>=0.22.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
 pandas>=2.0.0
+numpy>=1.24.0
 scikit-learn>=1.3.0
 requests>=2.31.0
 python-multipart>=0.0.6
@@ -90,7 +153,7 @@ python-multipart>=0.0.6
 
 ---
 
-## 🚀 Guía de Uso Rápido
+## 🚀 Guía de Uso Rápido (Sin Docker)
 
 ### Paso 1: Descargar el Dataset
 
@@ -123,13 +186,11 @@ python train_churn_prediction.py
 
 **Tiempo estimado:** 5-15 minutos (CPU), 2-5 minutos (GPU)
 
-### Paso 3: Entrenar el Modelo LLM (Opcional)
+### Paso 3: Descarga Automática del Modelo LLM
 
-```bash
-python train.py
-```
+El modelo LLM (Qwen2.5-1.5B-Instruct) se descarga automáticamente al iniciar la API por primera vez. No necesitas entrenarlo.
 
-Si no ejecutas este paso, la API usará el modelo base de Llama 3.2.
+**Nota:** La primera vez tomará ~5-10 minutos descargando el modelo (~3GB).
 
 ### Paso 4: Iniciar la API
 
@@ -630,7 +691,8 @@ Para contribuir al proyecto:
 - **Dataset**: [Bank Customer Churn Dataset](https://www.kaggle.com/datasets/shrutimechlearn/churn-modelling)
 - **Transformers**: [Hugging Face Documentation](https://huggingface.co/docs/transformers)
 - **FastAPI**: [FastAPI Documentation](https://fastapi.tiangolo.com)
-- **Llama 3.2**: [Meta AI Llama Models](https://ai.meta.com/llama/)
+- **Qwen2.5**: [Qwen2.5-1.5B-Instruct Model](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct)
+- **DistilBERT**: [DistilBERT Documentation](https://huggingface.co/distilbert-base-uncased)
 
 ---
 

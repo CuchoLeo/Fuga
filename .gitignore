@@ -1,0 +1,75 @@
+# ============================================================================
+# GITIGNORE - Archivos que NO se suben a Git
+# ============================================================================
+
+# Archivos de entorno con secrets (tokens, passwords, etc.)
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+# *.ipynb  # Comentado para permitir Churnito_Colab.ipynb
+
+# Logs
+*.log
+logs/
+
+# Modelos entrenados (pueden ser muy grandes)
+# Comentar estas líneas si quieres subir los modelos a git
+trained_model/
+churn_model/
+churn_checkpoint/
+checkpoint_churn/
+*.zip
+
+# Resultados de pruebas (regenerables)
+test_results/
+
+# Datos temporales
+*.tmp
+*.bak
+*.cache
+
+# Configuración local de GitHub
+.github/

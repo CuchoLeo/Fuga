@@ -211,12 +211,12 @@ print(f"🖥️  CUDA disponible: {torch.cuda.is_available()}")
 # Training arguments optimizados para churn prediction
 training_args = TrainingArguments(
     output_dir=str(checkpoint_dir),
-    num_train_epochs=3,  # Más epochs para mejor aprendizaje
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
+    num_train_epochs=1,  # Reducido a 1 época para entrenamiento rápido
+    per_device_train_batch_size=32,  # Aumentado para procesar más rápido
+    per_device_eval_batch_size=32,  # Aumentado para procesar más rápido
     eval_strategy="epoch",
     save_strategy="epoch",
-    logging_steps=10,
+    logging_steps=50,  # Menos logging = más rápido
     use_cpu=True,
     dataloader_pin_memory=False,
     dataloader_num_workers=0,
@@ -231,18 +231,77 @@ print("\n" + "="*70)
 print("🚀 INICIANDO ENTRENAMIENTO DEL MODELO DE PREDICCIÓN DE CHURN")
 print("="*70)
 
+# ============================================================================
+# CALCULAR CLASS WEIGHTS PARA MANEJAR DESBALANCE
+# ============================================================================
+
+# Contar distribución de clases
+from sklearn.utils.class_weight import compute_class_weight
+
+classes = np.unique(y_train)
+class_weights_array = compute_class_weight(
+    class_weight='balanced',
+    classes=classes,
+    y=y_train
+)
+class_weights = torch.tensor(class_weights_array, dtype=torch.float32)
+
+print(f"\n⚖️  Balanceo de clases:")
+print(f"Clase 0 (NO CHURN): {(y_train == 0).sum()} muestras, weight={class_weights[0]:.3f}")
+print(f"Clase 1 (CHURN):    {(y_train == 1).sum()} muestras, weight={class_weights[1]:.3f}")
+print(f"Ratio: {class_weights[1]/class_weights[0]:.2f}x más peso para clase minoritaria")
+
+# ============================================================================
+# CUSTOM TRAINER CON CLASS WEIGHTS
+# ============================================================================
+
+class WeightedTrainer(Trainer):
+    """Trainer personalizado que usa class weights en la función de pérdida"""
+
+    def __init__(self, *args, class_weights=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        # Extraer labels sin modificar el dict original
+        labels = inputs.get("labels")
+
+        # Forward pass
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+
+        # Calcular pérdida con class weights
+        if self.class_weights is not None:
+            loss_fct = torch.nn.CrossEntropyLoss(weight=self.class_weights)
+            loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        else:
+            # Fallback a pérdida por defecto
+            loss = outputs.get("loss")
+
+        return (loss, outputs) if return_outputs else loss
+
 # Función para calcular métricas
 def compute_metrics(eval_pred):
-    from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
-    
+    from sklearn.metrics import accuracy_score, precision_recall_fscore_support, confusion_matrix
+
     predictions, labels = eval_pred
     predictions = np.argmax(predictions, axis=1)
-    
+
     accuracy = accuracy_score(labels, predictions)
+
+    # Calcular métricas con zero_division=0 para evitar warnings
     precision, recall, f1, _ = precision_recall_fscore_support(
-        labels, predictions, average='binary'
+        labels, predictions, average='binary', zero_division=0
     )
-    
+
+    # Matriz de confusión
+    cm = confusion_matrix(labels, predictions)
+    tn, fp, fn, tp = cm.ravel()
+
+    print(f"\n📊 Matriz de Confusión:")
+    print(f"   TN={tn}, FP={fp}")
+    print(f"   FN={fn}, TP={tp}")
+
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -250,12 +309,13 @@ def compute_metrics(eval_pred):
         'f1': f1,
     }
 
-trainer = Trainer(
+trainer = WeightedTrainer(
     model=model,
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=test_dataset,
     compute_metrics=compute_metrics,
+    class_weights=class_weights,  # Pasar class weights al trainer
 )
 
 # ============================================================================
@@ -265,17 +325,34 @@ trainer = Trainer(
 try:
     train_result = trainer.train()
     print("\n✅ Entrenamiento completado!")
-    
+
     # Evaluar en test set
     print("\n📊 Evaluando modelo en conjunto de prueba...")
     eval_results = trainer.evaluate()
-    
+
     print("\n" + "="*70)
-    print("MÉTRICAS DE EVALUACIÓN")
+    print("✅ ENTRENAMIENTO COMPLETADO")
     print("="*70)
-    for key, value in eval_results.items():
-        print(f"{key}: {value:.4f}")
-    
+    print(f"📊 Accuracy:  {eval_results.get('eval_accuracy', 0):.4f}")
+    print(f"📊 Precision: {eval_results.get('eval_precision', 0):.4f}")
+    print(f"📊 Recall:    {eval_results.get('eval_recall', 0):.4f}")
+    print(f"📊 F1-Score:  {eval_results.get('eval_f1', 0):.4f}")
+
+    # Explicación de métricas
+    print("\n💡 Interpretación:")
+    print("   - Accuracy:  % de predicciones correctas (total)")
+    print("   - Precision: De los que predecimos CHURN, % que realmente hacen churn")
+    print("   - Recall:    De los que hacen CHURN, % que detectamos correctamente")
+    print("   - F1-Score:  Balance entre Precision y Recall")
+
+    # Advertencias
+    if eval_results.get('eval_precision', 0) < 0.5:
+        print("\n⚠️  ADVERTENCIA: Precision baja. El modelo predice muchos falsos positivos.")
+    if eval_results.get('eval_recall', 0) < 0.5:
+        print("\n⚠️  ADVERTENCIA: Recall bajo. El modelo no detecta suficientes churners.")
+    if eval_results.get('eval_f1', 0) > 0.7:
+        print("\n✅ F1-Score bueno (>0.7). Modelo balanceado entre precision y recall.")
+
 except Exception as e:
     print(f"\n❌ Error durante el entrenamiento: {e}")
     import traceback

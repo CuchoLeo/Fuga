@@ -24,16 +24,29 @@ services:
     volumes:
       # Modelos entrenados (persistencia)
       - ./churn_model:/app/churn_model
-      - ./trained_model:/app/trained_model
+
+      # Comentado temporalmente para permitir descarga fresh de Llama 3.2
+      # Una vez descargado, descomenta esta línea para persistencia
+      # - ./trained_model:/app/trained_model
 
       # Dataset (solo lectura)
       - ./Churn_Modelling.csv:/app/Churn_Modelling.csv:ro
 
     # Variables de entorno
+    # IMPORTANTE: Los valores sensibles (tokens) se leen desde el archivo .env
+    # El archivo .env NO se sube a git por seguridad
     environment:
+      # Host y puerto de la API
       - API_HOST=0.0.0.0
       - API_PORT=8000
+
+      # Deshabilitar buffering de Python para logs en tiempo real
       - PYTHONUNBUFFERED=1
+
+      # Token de Hugging Face para descargar modelos privados/gated (como Llama 3.2)
+      # Este token se lee desde el archivo .env (no hardcodeado por seguridad)
+      # Formato en .env: HUGGING_FACE_HUB_TOKEN=tu_token_aqui
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
 
     # Política de reinicio
     restart: unless-stopped
